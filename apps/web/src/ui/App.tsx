@@ -240,9 +240,41 @@ export const App: React.FC = () => {
         {artifactPreview && (
           <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 6 }}>{artifactPreview}</pre>
         )}
+        {artifactUrl && artifactType === 'change_delta' && artifactPreview && (() => {
+          try {
+            const parsed = JSON.parse(artifactPreview)
+            if (parsed && typeof parsed === 'object') {
+              const rows = Object.entries(parsed as any)
+              return (
+                <table style={{ marginTop: 12, borderCollapse: 'collapse', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: 6 }}>Class</th>
+                      <th style={{ textAlign: 'right', borderBottom: '1px solid #ddd', padding: 6 }}>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(([k, v]) => (
+                      <tr key={k}>
+                        <td style={{ borderBottom: '1px solid #eee', padding: 6 }}>{k}</td>
+                        <td style={{ textAlign: 'right', borderBottom: '1px solid #eee', padding: 6 }}>{String(v)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            }
+          } catch {}
+          return null
+        })()}
         {artifactUrl && artifactType === 'export_gltf' && (
           <div style={{ marginTop: 12 }}>
             <model-viewer src={artifactUrl} camera-controls style={{ width: '100%', height: 400, background: '#111' }}></model-viewer>
+          </div>
+        )}
+        {artifactUrl && artifactType === 'export_webm' && (
+          <div style={{ marginTop: 12 }}>
+            <video src={artifactUrl} controls style={{ width: '100%', background: '#000' }} />
           </div>
         )}
       </div>
