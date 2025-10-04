@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     minio_bucket_raw: str = "roborouter-raw"
     minio_bucket_processed: str = "roborouter-processed"
 
+    # Ingest (PDAL) defaults
+    ingest_voxel_size_m: float = 0.05
+    ingest_outlier_mean_k: int = 8
+    ingest_outlier_multiplier: float = 1.0
+    ingest_intensity_min: float = 0.0
+    ingest_intensity_max: float = 1.0
+
     # Change detection defaults
     change_voxel_size_m: float = 0.10
     change_min_points_per_voxel: int = 3

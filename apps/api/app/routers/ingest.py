@@ -41,10 +41,10 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
             pipeline = build_ingest_pipeline(
                 input_path,
                 output_path,
-                voxel_size=0.05,
-                stddev_mult=1.0,
-                intensity_min=0.0,
-                intensity_max=1.0,
+                voxel_size=settings.ingest_voxel_size_m,
+                stddev_mult=settings.ingest_outlier_multiplier,
+                intensity_min=settings.ingest_intensity_min,
+                intensity_max=settings.ingest_intensity_max,
                 out_srs=payload.crs,
             )
             try:
