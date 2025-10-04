@@ -245,6 +245,11 @@ export const App: React.FC = () => {
             <model-viewer src={artifactUrl} camera-controls style={{ width: '100%', height: 400, background: '#111' }}></model-viewer>
           </div>
         )}
+        {artifactUrl && artifactType === 'export_webm' && (
+          <div style={{ marginTop: 12 }}>
+            <video src={artifactUrl} controls style={{ width: '100%', background: '#000' }} />
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 16, color: '#555' }}>{status}</div>
