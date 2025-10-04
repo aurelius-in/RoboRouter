@@ -88,6 +88,7 @@ export const App: React.FC = () => {
   const [artifactUrl, setArtifactUrl] = useState<string>('')
   const [artifactType, setArtifactType] = useState<string>('')
   const [artifactPreview, setArtifactPreview] = useState<string>('')
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
 
   async function openLatestByType(type: string) {
     if (!sceneId) return
@@ -206,6 +207,9 @@ export const App: React.FC = () => {
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
         <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
+        <div style={{ marginTop: 8 }}>
+          <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
+        </div>
         {sceneList.length > 0 && (
           <div style={{ marginTop: 8 }}>
             <b>Recent scenes:</b>
@@ -220,11 +224,12 @@ export const App: React.FC = () => {
           </div>
         )}
         <ul>
-          {artifacts.map(a => (
+          {artifacts.filter(a => !artifactTypeFilter || a.type.includes(artifactTypeFilter)).map(a => (
             <li key={a.id}>
               <code>{a.id}</code> — {a.type} — {new Date(a.created_at).toLocaleString()}
               <button style={{ marginLeft: 8 }} onClick={()=>{ setSelectedArtifactId(a.id) }}>Select</button>
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); window.open(info.url, '_blank') }}>Open</button>
+              <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); try { await navigator.clipboard.writeText(info.url); setStatus('Copied URL'); } catch { setStatus('Copy failed') } }}>Copy URL</button>
             </li>
           ))}
         </ul>
