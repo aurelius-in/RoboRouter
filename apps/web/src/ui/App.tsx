@@ -41,6 +41,7 @@ export const App: React.FC = () => {
   const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
   const [scenesOffset, setScenesOffset] = useState<number>(0)
   const [scenesLimit, setScenesLimit] = useState<number>(50)
+  const [scenesTotal, setScenesTotal] = useState<number>(0)
   const [runs, setRuns] = useState<any[]>([])
   const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(false)
   const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(false)
@@ -51,6 +52,7 @@ export const App: React.FC = () => {
     try {
       const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
       setSceneList((res.items ?? []) as any[])
+      if (typeof res.total === 'number') setScenesTotal(res.total)
       setScenesOffset(nextOffset)
     } catch {}
   }
@@ -409,7 +411,7 @@ export const App: React.FC = () => {
         )}
         {sceneList.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <b>Recent scenes:</b>
+            <b>Recent scenes ({scenesOffset}-{Math.min(scenesOffset + scenesLimit, scenesTotal)} of {scenesTotal || '…'}):</b>
             <ul>
               {sceneList.map(s => (
                 <li key={s.id}>
@@ -420,8 +422,8 @@ export const App: React.FC = () => {
               ))}
             </ul>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={()=> refreshScenes(Math.max(0, scenesOffset - scenesLimit))}>Prev</button>
-              <button onClick={()=> refreshScenes(scenesOffset + scenesLimit)}>Next</button>
+              <button onClick={()=> refreshScenes(Math.max(0, scenesOffset - scenesLimit))} disabled={scenesOffset === 0}>Prev</button>
+              <button onClick={()=> refreshScenes(scenesOffset + scenesLimit)} disabled={scenesOffset + scenesLimit >= scenesTotal}>Next</button>
             </div>
           </div>
         )}
