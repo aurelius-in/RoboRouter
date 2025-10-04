@@ -178,9 +178,8 @@ RoboRouter/
 ## 🤝 Author
 
 **Oliver A. Ellison, MS SD**
-Principal AI Engineer & Architect – Reliable AI Network
-Portfolio: [ReliableAINetwork.com](https://reliableainetwork.com)
-Calendly: [https://calendly.com/oliveraellison/15min](https://calendly.com/oliveraellison/15min)
+Principal AI Engineer & Architect – RAIN (Reliable AI Network, Inc.)
+- Portfolio: [ReliableAINetwork.com](https://reliableainetwork.com)
 
 ---
 
