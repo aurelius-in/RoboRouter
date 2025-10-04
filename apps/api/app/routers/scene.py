@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
@@ -39,5 +39,19 @@ def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-de
         )
     finally:
         db.close()
+
+
+@router.get("/scenes")
+def list_scenes() -> List[Dict[str, Any]]:  # type: ignore[no-untyped-def]
+	"""List recent scenes with basic metadata."""
+	db: Session = SessionLocal()
+	try:
+		scenes = db.execute(select(Scene).order_by(Scene.created_at.desc()).limit(100)).scalars().all()
+		return [
+			{"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}
+			for s in scenes
+		]
+	finally:
+		db.close()
 
 

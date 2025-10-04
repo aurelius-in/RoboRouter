@@ -54,10 +54,11 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
             if type.lower() == "potree":
                 out_dir = f"{td}/potree_{scene_id}"
                 export_potree(input_laz, out_dir)
-                obj = f"exports/potree/{scene_id}"
+                obj_prefix = f"exports/potree/{scene_id}"
                 # Upload directory contents (placeholder file) – here we upload a marker
                 marker = f"{out_dir}/README.txt"
-                upload_file(client, "roborouter-processed", f"{obj}/README.txt", marker)
+                obj = f"{obj_prefix}/README.txt"
+                upload_file(client, "roborouter-processed", obj, marker)
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "laz":
                 out_laz = f"{td}/{scene_id}.laz"

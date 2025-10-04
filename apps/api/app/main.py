@@ -5,6 +5,7 @@ import subprocess
 from typing import Any, Dict, List
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.ingest import router as ingest_router
 from .routers.pipeline import router as pipeline_router
@@ -19,6 +20,15 @@ from .otel import setup_otel
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
 setup_otel("roborouter-api")
+
+# Allow local Vite UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _get_gpu_inventory() -> List[Dict[str, Any]]:
@@ -40,12 +50,34 @@ def _get_gpu_inventory() -> List[Dict[str, Any]]:
         return []
 
 
+def _get_pdal_info() -> Dict[str, Any]:
+    try:
+        result = subprocess.run(["pdal", "--version"], capture_output=True, text=True, check=True)
+        version = result.stdout.strip().split()[-1] if result.stdout else "unknown"
+        return {"available": True, "version": version}
+    except Exception:
+        return {"available": False, "version": None}
+
+
+def _get_open3d_info() -> Dict[str, Any]:
+    try:
+        import open3d as o3d  # type: ignore
+
+        return {"available": True, "version": getattr(o3d, "__version__", None)}
+    except Exception:
+        return {"available": False, "version": None}
+
+
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "service": "api",
         "gpu": _get_gpu_inventory(),
+        "deps": {
+            "pdal": _get_pdal_info(),
+            "open3d": _get_open3d_info(),
+        },
         "env": {
             "ROBOROUTER_PROFILE": os.getenv("ROBOROUTER_PROFILE", "default"),
         },
