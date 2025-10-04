@@ -44,6 +44,9 @@ export const App: React.FC = () => {
   const [runs, setRuns] = useState<any[]>([])
   const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(false)
   const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(false)
+  const [runsOffset, setRunsOffset] = useState<number>(0)
+  const [runsLimit, setRunsLimit] = useState<number>(10)
+  const [runsTotal, setRunsTotal] = useState<number>(0)
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
       const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
@@ -51,14 +54,17 @@ export const App: React.FC = () => {
       setScenesOffset(nextOffset)
     } catch {}
   }
-  async function refreshRuns() {
+  async function refreshRuns(nextOffset: number = runsOffset) {
     try {
       const params = new URLSearchParams()
       if (runsOnlyFailed) params.set('only_failed', 'true')
       if (runsOnlyPassed) params.set('only_passed', 'true')
-      params.set('limit', '10')
+      params.set('limit', String(runsLimit))
+      params.set('offset', String(nextOffset))
       const res = await apiGet<any>(`/runs?${params.toString()}`)
       setRuns(res.items || [])
+      if (typeof res.total === 'number') setRunsTotal(res.total)
+      setRunsOffset(nextOffset)
     } catch {}
   }
 
@@ -188,10 +194,20 @@ export const App: React.FC = () => {
           </span>
         )}
         {health?.meta && (
-          <span style={{ marginLeft: 12, color: '#777' }}>v{health.meta.version}</span>
-          {Array.isArray(health?.meta?.cors) && health.meta.cors.length > 0 && (
-            <span style={{ marginLeft: 8, color: '#999' }}>CORS: {health.meta.cors.join(', ')}</span>
-          )}
+          <>
+            <span style={{ marginLeft: 12, color: '#777' }}>v{health.meta.version}</span>
+            {Array.isArray(health?.meta?.cors) && health.meta.cors.length > 0 && (
+              <span style={{ marginLeft: 8, color: '#999' }}>CORS: {health.meta.cors.join(', ')}</span>
+            )}
+            {'api_key_required' in health.meta && (
+              <span style={{ marginLeft: 8, color: health.meta.api_key_required ? 'red' : '#999' }}>
+                key: {health.meta.api_key_required ? 'required' : 'optional'}
+              </span>
+            )}
+            {'presign_expires_seconds' in health.meta && (
+              <span style={{ marginLeft: 8, color: '#999' }}>presign={health.meta.presign_expires_seconds}s</span>
+            )}
+          </>
         )}
         <button style={{ marginLeft: 8 }} onClick={()=>setShowStats(v=>!v)}>{showStats ? 'Hide' : 'Show'} stats</button>
         {health?.cfg && (
@@ -330,7 +346,7 @@ export const App: React.FC = () => {
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
         <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
-        <button style={{ marginLeft: 8 }} onClick={refreshRuns}>List Runs</button>
+        <button style={{ marginLeft: 8 }} onClick={()=>refreshRuns(0)}>List Runs</button>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
         <div style={{ marginTop: 8 }}>
@@ -391,7 +407,7 @@ export const App: React.FC = () => {
         </ul>
         {runs.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <b>Recent runs:</b>
+            <b>Recent runs ({runsOffset}-{Math.min(runsOffset + runsLimit, runsTotal)} of {runsTotal || '…'}):</b>
             <ul>
               {runs.map(r => {
                 const ok = r.overall_pass ? '✅' : '❌'
@@ -400,6 +416,10 @@ export const App: React.FC = () => {
                 )
               })}
             </ul>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={()=> refreshRuns(Math.max(0, runsOffset - runsLimit))} disabled={runsOffset === 0}>Prev</button>
+              <button onClick={()=> refreshRuns(runsOffset + runsLimit)} disabled={runsOffset + runsLimit >= runsTotal}>Next</button>
+            </div>
           </div>
         )}
         {audit.length > 0 && (
