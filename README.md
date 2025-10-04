@@ -83,10 +83,8 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 
 ---
 
-## 📈 Flow (Top‑Down)
+## 📈 Flow
 
-```mermaid
-%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 ```mermaid
 %%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph TD
@@ -159,6 +157,7 @@ Potree / Web 3D Viewer + Report + API
 ### Mermaid Architecture 
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph LR
   User["Operator"] --> UI["React + Vite UI\n(Three.js / Potree)"]
   UI --> API["FastAPI / LangGraph Hooks"]
