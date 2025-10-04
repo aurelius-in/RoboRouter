@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, deleteArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -482,6 +482,7 @@ export const App: React.FC = () => {
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); window.open(info.url, '_blank') }}>Open</button>
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); try { await navigator.clipboard.writeText(info.url); setStatus('Copied URL'); } catch { setStatus('Copy failed') } }}>Copy URL</button>
               <a style={{ marginLeft: 6 }} href="#" onClick={async(e)=>{ e.preventDefault(); const info = await getArtifactUrl(a.id); const aEl = document.createElement('a'); aEl.href = info.url; aEl.download = ''; document.body.appendChild(aEl); aEl.click(); aEl.remove(); }}>Download</a>
+              <button style={{ marginLeft: 6, color: '#b00' }} onClick={async()=>{ try { await deleteArtifact(a.id); setStatus('Artifact deleted'); refreshArtifacts(artifactsOffset) } catch { setStatus('Delete artifact failed') } }}>Delete</button>
             </li>
           ))}
         </ul>
@@ -524,6 +525,7 @@ export const App: React.FC = () => {
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>
           <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified, etag: info.etag }); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
+          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const meta = await headArtifact(selectedArtifactId); setArtifactMeta({ size_bytes: meta.size_bytes ?? null, content_type: meta.content_type ?? null, last_modified: meta.last_modified ?? null, etag: meta.etag ?? null }); setStatus('Metadata refreshed') } catch { setStatus('Meta refresh failed') } }}>Refresh Meta</button>
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
           {/* Download as attachment with custom filename */}
           {selectedArtifactId && (

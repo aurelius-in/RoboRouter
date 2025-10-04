@@ -121,6 +121,49 @@ def refresh_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ign
     return get_artifact_url(artifact_id)
 
 
+@router.get("/artifacts/head/{artifact_id}")
+def artifact_head(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """Return artifact metadata (size, content-type, last_modified, etag) without issuing a new presigned URL."""
+    db: Session = SessionLocal()
+    try:
+        art = db.get(Artifact, artifact_id)
+        if not art:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        meta: Dict[str, Any] = {"artifact_id": str(artifact_id), "type": art.type, "uri": art.uri}
+        if art.uri.startswith("s3://"):
+            bucket, key = parse_s3_uri(art.uri)
+            client = get_minio_client()
+            try:
+                stat = client.stat_object(bucket, key)
+                meta.update({
+                    "size_bytes": getattr(stat, "size", None),
+                    "content_type": getattr(stat, "content_type", None),
+                    "last_modified": getattr(stat, "last_modified", None).timestamp() if getattr(stat, "last_modified", None) else None,
+                    "etag": getattr(stat, "etag", None),
+                })
+            except Exception:
+                pass
+        return meta
+    finally:
+        db.close()
+
+
+@router.delete("/artifacts/{artifact_id}")
+def delete_artifact(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        art = db.get(Artifact, artifact_id)
+        if not art:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        db.delete(art)
+        db.commit()
+        # Best-effort cache invalidation
+        _URL_CACHE.pop(str(artifact_id), None)
+        return {"status": "ok", "deleted": str(artifact_id)}
+    finally:
+        db.close()
+
+
 @router.get("/artifacts/{artifact_id}/csv", response_class=PlainTextResponse)
 def artifact_as_csv(artifact_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
     """For change_delta artifacts containing a JSON object, return CSV of key,count."""

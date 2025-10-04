@@ -54,6 +54,8 @@ export const getArtifactUrl = (artifactId: string, opts?: { filename?: string; a
 export const getLatestArtifact = (sceneId: string, type: string) => apiGet<ArtifactUrl>(`/artifacts/latest?scene_id=${encodeURIComponent(sceneId)}&type=${encodeURIComponent(type)}`)
 
 export const refreshArtifact = (artifactId: string) => apiPost<ArtifactUrl>(`/artifacts/refresh/${artifactId}`)
+export const headArtifact = (artifactId: string) => apiGet<Partial<ArtifactUrl>>(`/artifacts/head/${artifactId}`)
+export const deleteArtifact = (artifactId: string) => apiDelete<any>(`/artifacts/${artifactId}`)
 
 export const getArtifactCsv = (artifactId: string) => fetch(`${API_BASE}/artifacts/${artifactId}/csv`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('csv failed'); return r.text() })
 
