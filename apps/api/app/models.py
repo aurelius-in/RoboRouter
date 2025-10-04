@@ -67,3 +67,19 @@ class Metric(Base):
     scene: Mapped[Scene] = relationship("Scene", back_populates="metrics")
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    scene_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("scenes.id"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    details = Column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+    )
+
+
