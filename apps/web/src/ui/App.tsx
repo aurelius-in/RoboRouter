@@ -498,11 +498,19 @@ export const App: React.FC = () => {
 
       <div style={{ marginTop: 24 }}>
         <h3>Viewer (placeholder)</h3>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>
-          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
+          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified, etag: info.etag }); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
+          {/* Download as attachment with custom filename */}
+          {selectedArtifactId && (
+            <>
+              <input placeholder="filename.ext" id="rr_dl_name" />
+              <button onClick={async()=>{ try { const input = document.getElementById('rr_dl_name') as HTMLInputElement | null; const name = (input?.value || '').trim(); const info = await getArtifactUrl(selectedArtifactId, { filename: name || undefined, asAttachment: true }); const a = document.createElement('a'); a.href = info.url; a.download = name || ''; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Download failed') } }}>Download as</button>
+              <button onClick={async()=>{ try { const input = document.getElementById('rr_dl_name') as HTMLInputElement | null; const name = (input?.value || '').trim(); const info = await getArtifactUrl(selectedArtifactId, { filename: name || undefined, asAttachment: false }); window.open(info.url, '_blank') } catch { setStatus('Open inline failed') } }}>Open inline</button>
+            </>
+          )}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
         {selectedArtifactId && artifactExpiry !== null && (
