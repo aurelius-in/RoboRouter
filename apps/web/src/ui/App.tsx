@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, deleteArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -482,6 +482,7 @@ export const App: React.FC = () => {
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); window.open(info.url, '_blank') }}>Open</button>
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); try { await navigator.clipboard.writeText(info.url); setStatus('Copied URL'); } catch { setStatus('Copy failed') } }}>Copy URL</button>
               <a style={{ marginLeft: 6 }} href="#" onClick={async(e)=>{ e.preventDefault(); const info = await getArtifactUrl(a.id); const aEl = document.createElement('a'); aEl.href = info.url; aEl.download = ''; document.body.appendChild(aEl); aEl.click(); aEl.remove(); }}>Download</a>
+              <button style={{ marginLeft: 6, color: '#b00' }} onClick={async()=>{ try { await deleteArtifact(a.id); setStatus('Artifact deleted'); refreshArtifacts(artifactsOffset) } catch { setStatus('Delete artifact failed') } }}>Delete</button>
             </li>
           ))}
         </ul>

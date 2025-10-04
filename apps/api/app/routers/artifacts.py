@@ -148,6 +148,22 @@ def artifact_head(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-
         db.close()
 
 
+@router.delete("/artifacts/{artifact_id}")
+def delete_artifact(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        art = db.get(Artifact, artifact_id)
+        if not art:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        db.delete(art)
+        db.commit()
+        # Best-effort cache invalidation
+        _URL_CACHE.pop(str(artifact_id), None)
+        return {"status": "ok", "deleted": str(artifact_id)}
+    finally:
+        db.close()
+
+
 @router.get("/artifacts/{artifact_id}/csv", response_class=PlainTextResponse)
 def artifact_as_csv(artifact_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
     """For change_delta artifacts containing a JSON object, return CSV of key,count."""
