@@ -1,4 +1,29 @@
-# RoboRouter
+<p align="center">
+  <img src="robologo_trans.png" alt="RoboRouter" width="50%" />
+</p>
+
+Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves.
+
+Getting started
+----------------
+Prereqs: Docker with NVIDIA runtime. Then:
+
+1. Copy env file and bring services up:
+   - `cp infra/compose/.env.example infra/compose/.env`
+   - `cd infra/compose && docker compose up --build`
+
+2. Check health:
+   - API: `http://localhost:8000/health`
+   - Ray dashboard: `http://localhost:8265`
+   - MinIO: `http://localhost:9001`
+
+3. Smoke test:
+   - `python -m scripts.smoke_run`
+
+Ingest
+------
+- POST `/ingest` with `{source_uri, crs, sensor_meta}` to ingest and QA a scan.
+- For now, if PDAL is not installed in the API image, the pipeline stubs out and creates an empty output artifact to exercise the flow end-to-end.
 
 *RoboRouter turns raw 3D point clouds into explainable maps, metrics, and safe routes—bridging perception and autonomy through agentic AI.*
 

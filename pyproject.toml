@@ -1,0 +1,53 @@
+[project]
+name = "roborouter"
+version = "0.1.0"
+description = "RoboRouter: on-prem multi-agent 3D point-cloud perception + explainable autonomy"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "Reliable AI Network, Inc. (Oliver A. Ellison)" }
+]
+license = { text = "Apache-2.0" }
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = "\.(py|pyi)$"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "UP"  # pyupgrade
+]
+ignore = [
+  "E501"  # handled by black
+]
+src = ["agents", "apps", "scripts"]
+
+[tool.ruff.isort]
+known-first-party = ["roborouter"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+strict_equality = true
+pretty = true
+exclude = [
+  "apps/web/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+

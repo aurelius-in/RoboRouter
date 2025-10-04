@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+coverage.xml
+.coverage*
+
+# Node / Web
+node_modules/
+apps/web/node_modules/
+apps/web/dist/
+apps/web/.vite/
+
+# Data & Models (tracked via DVC/MLflow externally)
+data/
+models/
+.dvc/
+.dvc/cache/
+
+# Envs & Local
+.env
+infra/compose/.env
+*.env.local
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Docker
+**/Dockerfile.*.local
+**/.docker-buildx-cache
+
