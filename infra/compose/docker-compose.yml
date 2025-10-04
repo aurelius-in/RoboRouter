@@ -118,6 +118,13 @@ services:
     image: grafana/grafana:11.1.3
     ports:
       - "3000:3000"
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../observability/dashboards:/var/lib/grafana/dashboards:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/login" ]
       interval: 15s
