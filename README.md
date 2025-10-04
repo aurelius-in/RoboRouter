@@ -55,6 +55,7 @@ Every output — whether it’s a mesh, report, or navigation path — comes wit
 ### 3D Perception
 - **Ingestion & QA**: Reads LAS/LAZ/PLY/E57, validates coordinate frames, and filters noise with PDAL and Open3D.  
 - **Registration**: Global (FGR/TEASER++) + local ICP (point-to-plane) alignment with per-tile RMSE and inlier ratio.  
+  Usage: `POST /pipeline/run` with `steps=["registration"]` after ingest.
 - **Segmentation**: Classifies terrain, walls, poles, vegetation, machinery using KPConv or PointTransformer.  
 - **Modeling**: Builds meshes via Poisson Surface Reconstruction or Instant-NGP, exports glTF/OBJ.  
 - **Change Detection**: Voxel-based and learned differencing with displacement vectors and semantic deltas.  
@@ -85,6 +86,9 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 ## 📈 Flow (Top‑Down)
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph TD
   U["Web UI"] -->|Run| A["Ingest"]
   A --> B["QA / Calibration"]
@@ -152,10 +156,10 @@ Potree / Web 3D Viewer + Report + API
 
 ````
 
-### Mermaid Architecture (Top‑Down)
+### Mermaid Architecture 
 
 ```mermaid
-graph TD
+graph LR
   User["Operator"] --> UI["React + Vite UI\n(Three.js / Potree)"]
   UI --> API["FastAPI / LangGraph Hooks"]
   API --> Orchestrator["LangGraph on Ray"]
