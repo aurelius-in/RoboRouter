@@ -1,0 +1,21 @@
+stages:
+  ingest:
+    cmd: python -m scripts.pipeline ingest
+    outs: []
+  registration:
+    cmd: python -m scripts.pipeline registration
+    deps: []
+    outs: []
+  segmentation:
+    cmd: python -m scripts.pipeline segmentation
+    deps: []
+    outs: []
+  change_detection:
+    cmd: python -m scripts.pipeline change_detection
+    deps: []
+    outs: []
+  report:
+    cmd: python -m scripts.pipeline report
+    deps: []
+    outs: []
+
