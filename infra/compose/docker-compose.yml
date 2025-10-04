@@ -87,7 +87,7 @@ services:
   web:
     image: node:20-alpine
     working_dir: /app
-    command: ["sh", "-lc", "npm create vite@latest web -- --template react-ts && cd web && npm install && npm run dev -- --host 0.0.0.0"]
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0"]
     volumes:
       - ../../apps/web:/app
     ports:
