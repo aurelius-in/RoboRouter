@@ -195,6 +195,9 @@ export const App: React.FC = () => {
           <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting LAZ ...'); try{ await requestExport(sceneId, 'laz', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('LAZ export done.'); }catch{ setStatus('Export failed.') } }}>LAZ</button>
           <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting glTF ...'); try{ await requestExport(sceneId, 'gltf', 'EPSG:4978'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('glTF export done.'); }catch{ setStatus('Export failed.') } }}>glTF</button>
           <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting WebM ...'); try{ await requestExport(sceneId, 'webm', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('WebM export done.'); }catch{ setStatus('Export failed.') } }}>WebM</button>
+          <div style={{ marginTop: 6 }}>
+            <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>
+          </div>
         </div>
       </div>
 
