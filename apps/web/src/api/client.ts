@@ -93,5 +93,12 @@ export const listSceneArtifacts = (sceneId: string, offset: number, limit: numbe
   if (opts?.exportsOnly) p.set('exports_only', 'true')
   return apiGet<{ items: { id: string; type: string; uri: string; created_at: string }[]; offset: number; limit: number; total: number }>(`/scene/${sceneId}/artifacts?${p.toString()}`)
 }
+export const getScenesCsv = (opts?: { offset?: number; limit?: number; q?: string }) => {
+  const p = new URLSearchParams()
+  if (opts?.offset !== undefined) p.set('offset', String(opts.offset))
+  if (opts?.limit !== undefined) p.set('limit', String(opts.limit))
+  if (opts?.q) p.set('q', opts.q)
+  return fetch(`${API_BASE}/scenes/csv?${p.toString()}`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('scenes csv failed'); return r.text() })
+}
 
 

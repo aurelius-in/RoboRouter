@@ -66,6 +66,23 @@ def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Di
         db.close()
 
 
+@router.get("/scenes/csv", response_class=PlainTextResponse)
+def scenes_csv(offset: int = 0, limit: int = 1000, q: Optional[str] = None) -> str:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        base = select(Scene)
+        if q:
+            base = base.where(Scene.source_uri.ilike(f"%{q}%"))  # type: ignore[attr-defined]
+        base = base.order_by(Scene.created_at.desc()).offset(max(0, offset)).limit(min(5000, max(1, limit)))
+        scenes = db.execute(base).scalars().all()
+        out = ["id,source_uri,crs,created_at"]
+        for s in scenes:
+            out.append(f"{s.id},{s.source_uri},{s.crs},{s.created_at.isoformat()}")
+        return "\n".join(out) + "\n"
+    finally:
+        db.close()
+
+
 @router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key)])
 def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()

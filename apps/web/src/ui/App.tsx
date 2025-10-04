@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, deleteArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, deleteArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts, getScenesCsv } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -414,6 +414,7 @@ export const App: React.FC = () => {
         <span style={{ marginLeft: 8 }}>
           <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>setSceneQuery(e.target.value)} />
           <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
+          <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const csv = await getScenesCsv({ q: sceneQuery }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'scenes.csv'; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Scenes CSV failed') } }}>Download Scenes CSV</button>
         </span>
         <button style={{ marginLeft: 8 }} onClick={()=>refreshRuns(0)}>List Runs</button>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
