@@ -142,17 +142,7 @@ A human can always trace *why* a path was chosen or a region was flagged.
 
 ## 🏗️ Architecture
 
-```
 
-LiDAR / Drone / Robot  →  Ingestor Agent  →  Registration → Segmentation
-↓
-Modeling & Change Detection
-↓
-XAI + Policy Export + Navigation
-↓
-Potree / Web 3D Viewer + Report + API
-
-````
 
 ### Mermaid Architecture 
 
