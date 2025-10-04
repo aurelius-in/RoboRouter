@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from fastapi import APIRouter
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
@@ -45,7 +45,8 @@ def list_runs(limit: int = 50, offset: int = 0, only_failed: bool = False, only_
                     "overall_pass": overall_pass,
                 }
             )
-        return {"items": items, "offset": offset, "limit": limit}
+        total = db.execute(select(func.count(Scene.id))).scalar() or 0
+        return {"items": items, "offset": offset, "limit": limit, "total": int(total)}
     finally:
         db.close()
 

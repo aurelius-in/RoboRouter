@@ -40,8 +40,10 @@ export const runPipeline = (sceneId: string, steps: string[]) =>
 export const generateReport = (sceneId: string) =>
   apiPost<any>(`/report/generate?scene_id=${sceneId}`)
 
-export type ArtifactUrl = { artifact_id: string; type: string; url: string }
+export type ArtifactUrl = { artifact_id: string; type: string; url: string; uri?: string; expires_in_seconds?: number | null }
 export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/artifacts/${artifactId}`)
+
+export const getLatestArtifact = (sceneId: string, type: string) => apiGet<ArtifactUrl>(`/artifacts/latest?scene_id=${encodeURIComponent(sceneId)}&type=${encodeURIComponent(type)}`)
 
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
 export type SceneMetric = { name: string; value: number; created_at: string }
@@ -55,7 +57,7 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
 export const getConfig = () => apiGet<any>('/config')
-export const policyCheck = (type: string, crs: string) => apiGet<{ allowed: boolean; reason: string }>(`/policy/check?type=${encodeURIComponent(type)}&crs=${encodeURIComponent(crs)}`)
+export const policyCheck = (type: string, crs: string) => apiPost<{ allowed: boolean; reason: string }>(`/policy/check`, { export_type: type, crs })
 export const adminCleanup = () => apiPost<any>('/admin/cleanup')
 export const authPing = () => apiGet<any>('/auth/ping')
 export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; limit?: number }) => {
@@ -67,5 +69,6 @@ export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; l
   return apiGet<any>(`/runs${qs ? `?${qs}` : ''}`)
 }
 export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
+export const getModels = () => apiGet<any>('/models')
 
 

@@ -12,6 +12,7 @@ from ..models import Artifact
 from ..storage.minio_client import get_minio_client, presigned_get_url
 from ..config import settings
 from ..storage.utils import parse_s3_uri
+from sqlalchemy import select
 
 
 router = APIRouter(tags=["Artifacts"])
@@ -32,9 +33,11 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
             if not url:
                 url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
                 _cache_url(str(artifact_id), url, settings.presign_expires_seconds)
+            expires_in = _ttl_remaining(str(artifact_id))
         else:
             url = art.uri
-        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri}
+            expires_in = None
+        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri, "expires_in_seconds": expires_in}
     finally:
         db.close()
 
@@ -55,4 +58,29 @@ def _get_cached_url(artifact_id: str) -> str | None:
         _URL_CACHE.pop(artifact_id, None)
         return None
     return url
+
+
+def _ttl_remaining(artifact_id: str) -> int | None:
+    rec = _URL_CACHE.get(artifact_id)
+    if not rec:
+        return None
+    url, expires_at = rec
+    import time as _t
+    left = int(max(0, expires_at - _t.time()))
+    return left
+
+
+@router.get("/artifacts/latest")
+def get_latest_artifact(scene_id: uuid.UUID, type: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        row = db.execute(
+            select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == type).order_by(Artifact.created_at.desc())
+        ).scalars().first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        # Reuse existing handler
+        return get_artifact_url(row.id)
+    finally:
+        db.close()
 

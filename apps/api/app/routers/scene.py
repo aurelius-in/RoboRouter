@@ -4,7 +4,7 @@ import uuid
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
@@ -47,7 +47,7 @@ def list_scenes(offset: int = 0, limit: int = 50) -> Dict[str, Any]:  # type: ig
     db: Session = SessionLocal()
     try:
         q = select(Scene).order_by(Scene.created_at.desc())
-        total = db.execute(select(Scene)).scalars().count() if hasattr(db, "query") else None  # best-effort
+        total = db.execute(select(func.count(Scene.id))).scalar_one()
         scenes = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
         items = [
             {"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}

@@ -23,6 +23,7 @@ from .routers.config import router as config_router
 from .routers.policy import router as policy_router
 from .routers.auth import router as auth_router
 from .routers.runs import router as runs_router
+from .routers.models import router as models_router
 
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
@@ -132,7 +133,14 @@ def health() -> Dict[str, Any]:
 
 @app.get("/meta")
 def meta() -> Dict[str, Any]:
-    return {"version": app.version, "name": app.title, "cors": settings.cors_origins}
+    return {
+        "version": app.version,
+        "name": app.title,
+        "cors": settings.cors_origins,
+        "api_key_required": settings.api_key is not None,
+        "rate_limit_per_minute": settings.rate_limit_rpm,
+        "presign_expires_seconds": settings.presign_expires_seconds,
+    }
 
 
 app.include_router(ingest_router)
@@ -148,6 +156,7 @@ app.include_router(config_router)
 app.include_router(policy_router)
 app.include_router(auth_router)
 app.include_router(runs_router)
+app.include_router(models_router)
 
 # Observability
 setup_metrics(app)
