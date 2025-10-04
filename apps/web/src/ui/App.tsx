@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet } from '../api/client'
 
 type SceneSummary = { id: string }
 
@@ -23,6 +23,11 @@ export const App: React.FC = () => {
       .then(setHealth)
       .finally(() => setLoading(false))
   }, [])
+
+  const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
+  async function refreshScenes() {
+    try { const lst = await apiGet<any[]>('/scenes'); setSceneList(lst as any[]) } catch {}
+  }
 
   const gpu = useMemo(() => (health?.gpu ?? [] as any[]).map((g: any) => g.name).join(', '), [health])
 
@@ -178,6 +183,20 @@ export const App: React.FC = () => {
       <div style={{ marginTop: 16 }}>
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
+        <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
+        {sceneList.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <b>Recent scenes:</b>
+            <ul>
+              {sceneList.map(s => (
+                <li key={s.id}>
+                  <code>{s.id}</code> — {s.crs} — {new Date(s.created_at).toLocaleString()}
+                  <button style={{ marginLeft: 6 }} onClick={async()=>{ setSceneId(s.id); try { const sc = await getScene(s.id); setArtifacts(sc.artifacts) } catch {} }}>Open</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <ul>
           {artifacts.map(a => (
             <li key={a.id}>
