@@ -91,13 +91,13 @@ graph TD
   B --> C["Registration\n(FGR/TEASER++ + ICP)"]
   C --> D["Segmentation\n(KPConv / CPU fallback)"]
   D --> E["Change Detection\n(voxel diff / learned option)"]
-  E --> F["XAI & Report\nresiduals, entropy, \"why\" sentences"]
+  E --> F["XAI & Report\nresiduals, entropy, why sentences"]
   F --> G{"OPA Policy Gate"}
   G -->|allowed| H["Exports\nPotree, LAZ, glTF, policy-safe WebM"]
   G -->|blocked| X["Explain reason\naudit log + remediation"]
 
   %% Optional Autonomy Pack
-  D --> N["Autonomy Pack\nOccupancy/ESDF -> A*/TEB -> Guardian"]
+  D --> N["Autonomy Pack\nOccupancy/ESDF to A*/TEB to Guardian"]
   N --> G
 
   %% Storage & Tracking
@@ -283,6 +283,10 @@ Generate costmaps and explainable routes for drones or rovers navigating clutter
 * **glTF / OBJ meshes**
 * **Costmaps and routes** for navigation systems
 * **OPA-validated exports** for policy compliance
+
+### Exports & Policy
+- Use `POST /export?scene_id=...&type=potree&crs=EPSG:3857` to request an export.
+- Requests are evaluated against OPA-like policies; disallowed types or CRS return 403 with a clear reason.
 
 ---
 
