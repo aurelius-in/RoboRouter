@@ -5,6 +5,7 @@ import subprocess
 from typing import Any, Dict, List
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.ingest import router as ingest_router
 from .routers.pipeline import router as pipeline_router
@@ -19,6 +20,15 @@ from .otel import setup_otel
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
 setup_otel("roborouter-api")
+
+# Allow local Vite UI
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _get_gpu_inventory() -> List[Dict[str, Any]]:
