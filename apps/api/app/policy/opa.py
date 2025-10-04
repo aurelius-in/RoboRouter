@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Tuple
+from ..utils.crs import allowed_crs
 
 
 ALLOWED_EXPORT_TYPES = {"potree", "laz", "gltf", "webm"}
-ALLOWED_CRS = {"EPSG:3857", "EPSG:26915", "EPSG:4978"}
 
 
 def evaluate_export_policy(policy_input: Dict[str, Any]) -> Tuple[bool, str]:
@@ -17,7 +17,7 @@ def evaluate_export_policy(policy_input: Dict[str, Any]) -> Tuple[bool, str]:
 
     if export_type not in ALLOWED_EXPORT_TYPES:
         return False, f"export type '{export_type}' is not allowed"
-    if crs and crs not in ALLOWED_CRS:
+    if crs and crs not in allowed_crs():
         return False, f"CRS '{crs}' is not permitted"
 
     rounding_mm = policy_input.get("rounding_mm")

@@ -18,6 +18,7 @@ from ..observability import REQUEST_COUNT, REQUEST_LATENCY, SERVICE_NAME
 import time
 from ..utils.hash import sha256_file
 from ..mlflow_stub import log_metrics as mlflow_log_metrics
+from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
 
 
@@ -38,6 +39,7 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             raise HTTPException(status_code=404, detail="Scene not found")
 
         # out already declared with orchestrator stub
+        thr = load_thresholds()
 
         if "registration" in steps:
             _t0 = time.time()
@@ -87,6 +89,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 mlflow_log_metrics({"registration_ms": out["metrics"]["registration_ms"], "rmse": float(out["metrics"]["rmse"]), "inlier_ratio": float(out["metrics"]["inlier_ratio"])})
             except Exception:
                 pass
+            # Pass/fail gate
+            try:
+                out["metrics"]["registration_pass"] = float((out["metrics"]["rmse"] <= thr.get("rmse_max", 0.10)) and (out["metrics"]["inlier_ratio"] >= 0.70))
+            except Exception:
+                out["metrics"]["registration_pass"] = 0.0
 
         if "segmentation" in steps:
             _t0 = time.time()
@@ -134,6 +141,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 mlflow_log_metrics({"segmentation_ms": out["metrics"]["segmentation_ms"], "miou": float(out["metrics"]["miou"])})
             except Exception:
                 pass
+            # Pass/fail gate
+            try:
+                out["metrics"]["segmentation_pass"] = float(out["metrics"].get("miou", 0.0) >= thr.get("miou_min", 0.70))
+            except Exception:
+                out["metrics"]["segmentation_pass"] = 0.0
 
         if "change_detection" in steps:
             _t0 = time.time()
@@ -199,6 +211,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 })
             except Exception:
                 pass
+            # Pass/fail gate
+            try:
+                out["metrics"]["change_detection_pass"] = float(out["metrics"].get("change_f1", 0.0) >= thr.get("change_f1_min", 0.70))
+            except Exception:
+                out["metrics"]["change_detection_pass"] = 0.0
 
         return out
     finally:
