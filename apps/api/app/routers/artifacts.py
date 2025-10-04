@@ -32,9 +32,11 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
             if not url:
                 url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
                 _cache_url(str(artifact_id), url, settings.presign_expires_seconds)
+            expires_in = _ttl_remaining(str(artifact_id))
         else:
             url = art.uri
-        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri}
+            expires_in = None
+        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri, "expires_in_seconds": expires_in}
     finally:
         db.close()
 
@@ -55,4 +57,14 @@ def _get_cached_url(artifact_id: str) -> str | None:
         _URL_CACHE.pop(artifact_id, None)
         return None
     return url
+
+
+def _ttl_remaining(artifact_id: str) -> int | None:
+    rec = _URL_CACHE.get(artifact_id)
+    if not rec:
+        return None
+    url, expires_at = rec
+    import time as _t
+    left = int(max(0, expires_at - _t.time()))
+    return left
 

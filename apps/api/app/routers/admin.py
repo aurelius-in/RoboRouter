@@ -27,7 +27,7 @@ def cleanup_old_records() -> Dict[str, Any]:  # type: ignore[no-untyped-def]
         m = db.execute(delete(Metric).where(Metric.created_at < cutoff)).rowcount or 0
         l = db.execute(delete(AuditLog).where(AuditLog.created_at < cutoff)).rowcount or 0
         db.commit()
-        return {"deleted": {"artifacts": int(a), "metrics": int(m), "audit_logs": int(l)}, "cutoff": cutoff.isoformat()}
+        return {"deleted": {"artifacts": int(a), "metrics": int(m), "audit_logs": int(l)}, "cutoff": cutoff.isoformat(), "retention_days": settings.retention_days}
     finally:
         db.close()
 

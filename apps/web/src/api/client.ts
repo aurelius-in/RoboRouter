@@ -40,7 +40,7 @@ export const runPipeline = (sceneId: string, steps: string[]) =>
 export const generateReport = (sceneId: string) =>
   apiPost<any>(`/report/generate?scene_id=${sceneId}`)
 
-export type ArtifactUrl = { artifact_id: string; type: string; url: string }
+export type ArtifactUrl = { artifact_id: string; type: string; url: string; uri?: string; expires_in_seconds?: number | null }
 export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/artifacts/${artifactId}`)
 
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }

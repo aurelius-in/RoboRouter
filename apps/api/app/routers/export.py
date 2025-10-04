@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
 from ..policy.opa import evaluate_export_policy
+from ..utils.crs import validate_crs
 from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
 from ..storage.minio_client import get_minio_client, upload_file
@@ -27,6 +28,9 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
+
+        if not validate_crs(crs):
+            raise HTTPException(status_code=400, detail=f"Invalid or unsupported CRS: {crs}")
 
         allowed, reason = evaluate_export_policy({"type": type, "crs": crs, "rounding_mm": 5})
         if not allowed:

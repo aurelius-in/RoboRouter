@@ -196,9 +196,14 @@ export const App: React.FC = () => {
         <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await authPing(); setStatus('Auth ok') } catch { setStatus('Auth failed') } }}>Auth</button>
         <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const r = await adminCleanup(); setStatus(`Cleanup: ${JSON.stringify(r.deleted || {})}`) } catch { setStatus('Cleanup failed') } }}>Cleanup</button>
       </div>
-      {showStats && stats && (
+        {showStats && stats && (
         <div style={{ marginBottom: 12, color: '#555' }}>
           <b>Stats:</b> scenes={stats.scenes} artifacts={stats.artifacts} metrics={stats.metrics} exports={stats.exports}
+          {stats.exports_by_type && (
+            <span style={{ marginLeft: 8 }}>
+              <b>by type:</b> {Object.entries(stats.exports_by_type).map(([k,v]) => `${k}:${v}`).join(', ')}
+            </span>
+          )}
         </div>
       )}
       {models && (
@@ -405,6 +410,20 @@ export const App: React.FC = () => {
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
+        {selectedArtifactId && (
+          <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
+            {artifactType && <span>type={artifactType} </span>}
+            {artifactUrl && <span> | </span>}
+            <span>
+              {(() => {
+                try {
+                  const el = document.querySelector('div[data-artifact-meta]') as HTMLDivElement | null
+                  return null
+                } catch { return null }
+              })()}
+            </span>
+          </div>
+        )}
         {artifactPreview && (
           <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 6 }}>{artifactPreview}</pre>
         )}

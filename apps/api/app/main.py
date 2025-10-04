@@ -133,7 +133,13 @@ def health() -> Dict[str, Any]:
 
 @app.get("/meta")
 def meta() -> Dict[str, Any]:
-    return {"version": app.version, "name": app.title, "cors": settings.cors_origins}
+    return {
+        "version": app.version,
+        "name": app.title,
+        "cors": settings.cors_origins,
+        "api_key_required": settings.api_key is not None,
+        "rate_limit_per_minute": settings.rate_limit_rpm,
+    }
 
 
 app.include_router(ingest_router)
