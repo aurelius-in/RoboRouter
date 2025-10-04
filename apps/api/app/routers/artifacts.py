@@ -13,7 +13,7 @@ from ..config import settings
 from ..storage.utils import parse_s3_uri
 
 
-router = APIRouter()
+router = APIRouter(tags=["Artifacts"])
 
 
 @router.get("/artifacts/{artifact_id}")

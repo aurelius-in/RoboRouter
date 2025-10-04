@@ -12,7 +12,7 @@ from ..models import Artifact, AuditLog, Metric, Scene
 from ..schemas import SceneDetail, ArtifactDTO, MetricDTO, AuditDTO
 
 
-router = APIRouter()
+router = APIRouter(tags=["Scene"])
 
 
 @router.get("/scene/{scene_id}", response_model=SceneDetail)

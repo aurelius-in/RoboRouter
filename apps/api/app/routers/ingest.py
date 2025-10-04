@@ -16,7 +16,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.crs import validate_crs
 
 
-router = APIRouter()
+router = APIRouter(tags=["Ingest"])
 
 
 @router.on_event("startup")
@@ -38,6 +38,8 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
 
     with tempfile.TemporaryDirectory() as td:
         input_path = payload.source_uri  # For now assume local path; S3 support later
+        if not Path(input_path).exists():
+            raise HTTPException(status_code=400, detail="Source file not found")
         output_path = str(Path(td) / f"{scene.id}.laz")
 
         used_pdal = False
