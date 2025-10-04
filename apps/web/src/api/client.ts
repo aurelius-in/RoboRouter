@@ -67,5 +67,6 @@ export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; l
   return apiGet<any>(`/runs${qs ? `?${qs}` : ''}`)
 }
 export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
+export const getModels = () => apiGet<any>('/models')
 
 

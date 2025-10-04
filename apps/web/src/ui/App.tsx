@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -30,10 +30,11 @@ export const App: React.FC = () => {
   const [orchestratorPlan, setOrchestratorPlan] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [showStats, setShowStats] = useState<boolean>(false)
+  const [models, setModels] = useState<any>(null)
 
   useEffect(() => {
-    Promise.all([getHealth(), getMeta(), getStats(), getConfig()])
-      .then(([h, m, s, cfg]) => { setHealth({ ...h, meta: m, cfg }); setStats(s) })
+    Promise.all([getHealth(), getMeta(), getStats(), getConfig(), getModels()])
+      .then(([h, m, s, cfg, mods]) => { setHealth({ ...h, meta: m, cfg }); setStats(s); setModels(mods) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -198,6 +199,23 @@ export const App: React.FC = () => {
       {showStats && stats && (
         <div style={{ marginBottom: 12, color: '#555' }}>
           <b>Stats:</b> scenes={stats.scenes} artifacts={stats.artifacts} metrics={stats.metrics} exports={stats.exports}
+        </div>
+      )}
+      {models && (
+        <div style={{ marginBottom: 12 }}>
+          <h3>Models</h3>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            {Object.keys(models).map((group) => (
+              <div key={group}>
+                <b>{group}</b>
+                <ul>
+                  {models[group].map((m: any) => (
+                    <li key={m.name}>{m.name} — {m.device} — {m.status}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
