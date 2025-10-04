@@ -83,6 +83,7 @@ export const App: React.FC = () => {
       setArtifacts(sc.artifacts)
       setMetrics(sc.metrics || [])
       setAudit(sc.audit || [])
+      try { setGates(await getGates(sceneId)) } catch {}
     } catch {}
   }
 
@@ -126,6 +127,7 @@ export const App: React.FC = () => {
   const [selectedArtifactId, setSelectedArtifactId] = useState<string>('')
   const [artifactUrl, setArtifactUrl] = useState<string>('')
   const [artifactType, setArtifactType] = useState<string>('')
+  const [artifactExpiry, setArtifactExpiry] = useState<number | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
@@ -145,6 +147,7 @@ export const App: React.FC = () => {
       const info = await getArtifactUrl(found.id)
       setArtifactUrl(info.url)
       setArtifactType(info.type)
+      setArtifactExpiry(info.expires_in_seconds ?? null)
       try {
         const resp = await fetch(info.url)
         const text = await resp.text()
@@ -159,6 +162,7 @@ export const App: React.FC = () => {
     const info = await getArtifactUrl(selectedArtifactId)
     setArtifactUrl(info.url)
     setArtifactType(info.type)
+    setArtifactExpiry(info.expires_in_seconds ?? null)
     try {
       const resp = await fetch(info.url)
       const text = await resp.text()
@@ -346,6 +350,14 @@ export const App: React.FC = () => {
               &nbsp; seg={Number(metrics.find(m=>m.name==='segmentation_pass')?.value || 0) ? 'pass' : 'fail'}
               &nbsp; chg={Number(metrics.find(m=>m.name==='change_detection_pass')?.value || 0) ? 'pass' : 'fail'}
             </div>
+            {gates && (
+              <div style={{ marginTop: 6 }}>
+                <b>Golden Gates:</b>
+                <span style={{ marginLeft: 8, color: gates.registration_pass ? 'green' : 'red' }}>reg={gates.registration_pass ? 'pass' : 'fail'}</span>
+                <span style={{ marginLeft: 8, color: gates.segmentation_pass ? 'green' : 'red' }}>seg={gates.segmentation_pass ? 'pass' : 'fail'}</span>
+                <span style={{ marginLeft: 8, color: gates.change_pass ? 'green' : 'red' }}>chg={gates.change_pass ? 'pass' : 'fail'}</span>
+              </div>
+            )}
           </div>
         )}
         {sceneList.length > 0 && (
@@ -410,21 +422,8 @@ export const App: React.FC = () => {
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
-        {selectedArtifactId && (
-          <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
-            {/* Show expiry if available */}
-            <span>
-              {(async () => {
-                try {
-                  const info = await getArtifactUrl(selectedArtifactId)
-                  if (info.expires_in_seconds !== undefined && info.expires_in_seconds !== null) {
-                    return `expires in ~${info.expires_in_seconds}s`
-                  }
-                } catch {}
-                return null
-              })()}
-            </span>
-          </div>
+        {selectedArtifactId && artifactExpiry !== null && (
+          <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>expires in ~{artifactExpiry}s</div>
         )}
         {selectedArtifactId && (
           <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
