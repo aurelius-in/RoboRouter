@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Metric, Scene
 from ..schemas import SceneDetail, ArtifactDTO, MetricDTO, AuditDTO
+from ..deps import require_api_key
+from ..storage.utils import parse_s3_uri
+from ..storage.minio_client import get_minio_client
 
 
 router = APIRouter(tags=["Scene"])
@@ -63,13 +66,26 @@ def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Di
         db.close()
 
 
-@router.delete("/scene/{scene_id}")
+@router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key)])
 def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
+        # Best-effort S3 cleanup for related artifacts
+        try:
+            arts = db.execute(select(Artifact).where(Artifact.scene_id == scene_id)).scalars().all()
+            client = get_minio_client()
+            for a in arts:
+                if a.uri and a.uri.startswith("s3://"):
+                    try:
+                        bucket, key = parse_s3_uri(a.uri)
+                        client.remove_object(bucket, key)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
         db.delete(scene)
         db.commit()
         return {"deleted": str(scene_id)}
