@@ -154,3 +154,21 @@ def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, 
     finally:
         db.close()
 
+
+@router.get("/scene/{scene_id}/artifacts/csv", response_class=PlainTextResponse)
+def artifacts_csv(scene_id: uuid.UUID, type: Optional[str] = None, exports_only: bool = False) -> str:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        q = select(Artifact).where(Artifact.scene_id == scene_id).order_by(Artifact.created_at.desc())
+        if type:
+            q = q.where(Artifact.type == type)
+        if exports_only:
+            q = q.where(Artifact.type.like("export_%"))
+        rows = db.execute(q).scalars().all()
+        out = ["id,type,created_at,uri"]
+        for a in rows:
+            out.append(f"{a.id},{a.type},{a.created_at.isoformat()},{a.uri}")
+        return "\n".join(out) + "\n"
+    finally:
+        db.close()
+

@@ -426,6 +426,7 @@ export const App: React.FC = () => {
           <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
           <label style={{ marginLeft: 8 }}><input type="checkbox" checked={exportsOnly} onChange={(e)=> setExportsOnly(e.target.checked) } /> exports only</label>
           <button style={{ marginLeft: 8 }} onClick={()=>refreshArtifacts(0)}>Apply</button>
+          <button style={{ marginLeft: 6 }} onClick={async()=>{ if(!sceneId) return; try { const csv = await getArtifactsCsv(sceneId, { type: artifactTypeFilter || undefined, exportsOnly }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `artifacts_${sceneId}.csv`; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Artifacts CSV failed') } }}>Download Artifacts CSV</button>
         </div>
         {metrics.length > 0 && (
           <div style={{ marginTop: 8, color: '#444' }}>
