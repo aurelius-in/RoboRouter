@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -48,9 +48,12 @@ export const App: React.FC = () => {
   const [runsOffset, setRunsOffset] = useState<number>(0)
   const [runsLimit, setRunsLimit] = useState<number>(10)
   const [runsTotal, setRunsTotal] = useState<number>(0)
+  const [sceneQuery, setSceneQuery] = useState<string>('')
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
-      const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
+      const qs = new URLSearchParams({ offset: String(nextOffset), limit: String(scenesLimit) })
+      if (sceneQuery) qs.set('q', sceneQuery)
+      const res = await apiGet<any>(`/scenes?${qs.toString()}`)
       setSceneList((res.items ?? []) as any[])
       if (typeof res.total === 'number') setScenesTotal(res.total)
       setScenesOffset(nextOffset)
@@ -216,6 +219,9 @@ export const App: React.FC = () => {
             {'presign_expires_seconds' in health.meta && (
               <span style={{ marginLeft: 8, color: '#999' }}>presign={health.meta.presign_expires_seconds}s</span>
             )}
+            {'rate_limit_per_minute' in health.meta && (
+              <span style={{ marginLeft: 8, color: '#999' }}>rpm={health.meta.rate_limit_per_minute}</span>
+            )}
           </>
         )}
         <button style={{ marginLeft: 8 }} onClick={()=>setShowStats(v=>!v)}>{showStats ? 'Hide' : 'Show'} stats</button>
@@ -231,6 +237,11 @@ export const App: React.FC = () => {
           {stats.exports_by_type && (
             <span style={{ marginLeft: 8 }}>
               <b>by type:</b> {Object.entries(stats.exports_by_type).map(([k,v]) => `${k}:${v}`).join(', ')}
+            </span>
+          )}
+          {('passed' in stats) && (
+            <span style={{ marginLeft: 8 }}>
+              <b>passed:</b> {stats.passed} <b>failed:</b> {stats.failed} <b>pass_rate:</b> {(stats.pass_rate*100).toFixed(1)}%
             </span>
           )}
         </div>
@@ -338,6 +349,10 @@ export const App: React.FC = () => {
         <div>
           <h3>Report</h3>
           <button onClick={onGenerateReport}>Generate</button>
+          <div style={{ marginTop: 6 }}>
+            <button onClick={()=>openLatestByType('report_html')}>Open latest HTML</button>
+            <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('report_pdf')}>Open latest PDF</button>
+          </div>
         </div>
 
         <div>
@@ -384,7 +399,10 @@ export const App: React.FC = () => {
       <div style={{ marginTop: 16 }}>
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
-        <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
+        <span style={{ marginLeft: 8 }}>
+          <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>setSceneQuery(e.target.value)} />
+          <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
+        </span>
         <button style={{ marginLeft: 8 }} onClick={()=>refreshRuns(0)}>List Runs</button>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
@@ -412,6 +430,7 @@ export const App: React.FC = () => {
                 <span style={{ marginLeft: 8, color: gates.registration_pass ? 'green' : 'red' }}>reg={gates.registration_pass ? 'pass' : 'fail'}</span>
                 <span style={{ marginLeft: 8, color: gates.segmentation_pass ? 'green' : 'red' }}>seg={gates.segmentation_pass ? 'pass' : 'fail'}</span>
                 <span style={{ marginLeft: 8, color: gates.change_pass ? 'green' : 'red' }}>chg={gates.change_pass ? 'pass' : 'fail'}</span>
+                <button style={{ marginLeft: 8 }} onClick={async()=>{ if(!sceneId) return; try { const csv = await getMetricsCsv(sceneId); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `metrics_${sceneId}.csv`; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Metrics CSV failed') } }}>Download Metrics CSV</button>
               </div>
             )}
           </div>

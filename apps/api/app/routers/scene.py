@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
@@ -42,13 +43,17 @@ def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-de
 
 
 @router.get("/scenes")
-def list_scenes(offset: int = 0, limit: int = 50) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     """List recent scenes with basic metadata (paginated)."""
     db: Session = SessionLocal()
     try:
-        q = select(Scene).order_by(Scene.created_at.desc())
-        total = db.execute(select(func.count(Scene.id))).scalar_one()
-        scenes = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
+        base = select(Scene)
+        if q:
+            # Filter by source_uri substring (case-insensitive)
+            base = base.where(Scene.source_uri.ilike(f"%{q}%"))  # type: ignore[attr-defined]
+        base = base.order_by(Scene.created_at.desc())
+        total = db.execute(select(func.count(Scene.id)).select_from(base.subquery())).scalar_one()
+        scenes = db.execute(base.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
         items = [
             {"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}
             for s in scenes
@@ -68,6 +73,19 @@ def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-unty
         db.delete(scene)
         db.commit()
         return {"deleted": str(scene_id)}
+    finally:
+        db.close()
+
+
+@router.get("/scene/{scene_id}/metrics/csv", response_class=PlainTextResponse)
+def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        rows = db.execute(select(Metric).where(Metric.scene_id == scene_id).order_by(Metric.created_at.asc())).scalars().all()
+        out = ["name,value,created_at"]
+        for m in rows:
+            out.append(f"{m.name},{float(m.value)},{m.created_at.isoformat()}")
+        return "\n".join(out) + "\n"
     finally:
         db.close()
 
