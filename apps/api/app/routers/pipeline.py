@@ -78,8 +78,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 db.refresh(art_resid)
                 out["artifacts"].extend([str(art_aligned.id), str(art_resid.id)])
                 out["metrics"].update({"rmse": result.rmse, "inlier_ratio": result.inlier_ratio})
+            dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "registration", "200").inc()
-            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(time.time() - _t0)
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(dur)
+            out["metrics"]["registration_ms"] = round(dur * 1000.0, 2)
 
         if "segmentation" in steps:
             _t0 = time.time()
@@ -119,8 +121,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     db.refresh(a)
                     out["artifacts"].append(str(a.id))
                 out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
+            dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "segmentation", "200").inc()
-            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(time.time() - _t0)
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(dur)
+            out["metrics"]["segmentation_ms"] = round(dur * 1000.0, 2)
 
         if "change_detection" in steps:
             _t0 = time.time()
@@ -173,8 +177,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     "change_recall": float(cd_out["recall"]),      # type: ignore[index]
                     "change_f1": float(cd_out["f1"]),              # type: ignore[index]
                 })
+            dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
-            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(time.time() - _t0)
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
+            out["metrics"]["change_detection_ms"] = round(dur * 1000.0, 2)
 
         return out
     finally:

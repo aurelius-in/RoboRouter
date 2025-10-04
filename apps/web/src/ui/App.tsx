@@ -339,6 +339,11 @@ export const App: React.FC = () => {
           } catch {}
           return null
         })()}
+        {artifactUrl && artifactType === 'change_delta' && (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>
+            Legend: added=objects newly present, removed=objects missing, moved=displaced items
+          </div>
+        )}
         {artifactUrl && artifactType === 'export_gltf' && (
           <div style={{ marginTop: 12 }}>
             <model-viewer src={artifactUrl} camera-controls style={{ width: '100%', height: 400, background: '#111' }}></model-viewer>
