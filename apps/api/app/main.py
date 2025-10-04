@@ -50,12 +50,34 @@ def _get_gpu_inventory() -> List[Dict[str, Any]]:
         return []
 
 
+def _get_pdal_info() -> Dict[str, Any]:
+    try:
+        result = subprocess.run(["pdal", "--version"], capture_output=True, text=True, check=True)
+        version = result.stdout.strip().split()[-1] if result.stdout else "unknown"
+        return {"available": True, "version": version}
+    except Exception:
+        return {"available": False, "version": None}
+
+
+def _get_open3d_info() -> Dict[str, Any]:
+    try:
+        import open3d as o3d  # type: ignore
+
+        return {"available": True, "version": getattr(o3d, "__version__", None)}
+    except Exception:
+        return {"available": False, "version": None}
+
+
 @app.get("/health")
 def health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "service": "api",
         "gpu": _get_gpu_inventory(),
+        "deps": {
+            "pdal": _get_pdal_info(),
+            "open3d": _get_open3d_info(),
+        },
         "env": {
             "ROBOROUTER_PROFILE": os.getenv("ROBOROUTER_PROFILE", "default"),
         },
