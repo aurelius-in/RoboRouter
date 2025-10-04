@@ -20,9 +20,10 @@ def test_scene_detail(tmp_path) -> None:  # type: ignore[no-untyped-def]
 	assert isinstance(body["artifacts"], list)
 	assert isinstance(body["metrics"], list)
 
-	rlist = client.get("/scenes")
-	assert rlist.status_code == 200
-	lst = rlist.json()
-	assert isinstance(lst, list)
-	assert any(item["id"] == scene_id for item in lst)
+    rlist = client.get("/scenes?offset=0&limit=10")
+    assert rlist.status_code == 200
+    lst = rlist.json()
+    assert isinstance(lst, dict)
+    assert isinstance(lst.get("items"), list)
+    assert any(item["id"] == scene_id for item in lst.get("items", []))
 

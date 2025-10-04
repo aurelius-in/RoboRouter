@@ -29,10 +29,13 @@ export type ArtifactUrl = { artifact_id: string; type: string; url: string }
 export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/artifacts/${artifactId}`)
 
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
-export type SceneDetail = { id: string; artifacts: SceneArtifact[] }
+export type SceneMetric = { name: string; value: number; created_at: string }
+export type SceneDetail = { id: string; artifacts: SceneArtifact[]; metrics?: SceneMetric[] }
 export const getScene = (sceneId: string) => apiGet<SceneDetail>(`/scene/${sceneId}`)
 
 export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG:3857') =>
   apiPost<any>(`/export?scene_id=${sceneId}&type=${type}&crs=${crs}`)
+
+export const getMeta = () => apiGet<any>('/meta')
 
 

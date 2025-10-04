@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
 from ..policy.opa import evaluate_export_policy
+from ..observability import EXPORT_COUNT, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
 from ..storage.minio_client import get_minio_client, upload_file
 
@@ -30,6 +31,7 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         if not allowed:
             db.add(AuditLog(scene_id=scene_id, action="export_blocked", details={"type": type, "reason": reason}))
             db.commit()
+            EXPORT_COUNT.labels(SERVICE_NAME, type, "blocked").inc()
             raise HTTPException(status_code=403, detail=reason)
 
         # Choose a source artifact to export (prioritize aligned)
@@ -55,10 +57,9 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 out_dir = f"{td}/potree_{scene_id}"
                 export_potree(input_laz, out_dir)
                 obj_prefix = f"exports/potree/{scene_id}"
-                # Upload directory contents (placeholder file) – here we upload a marker
-                marker = f"{out_dir}/README.txt"
-                obj = f"{obj_prefix}/README.txt"
-                upload_file(client, "roborouter-processed", obj, marker)
+                index_local = f"{out_dir}/index.html"
+                obj = f"{obj_prefix}/index.html"
+                upload_file(client, "roborouter-processed", obj, index_local)
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "laz":
                 out_laz = f"{td}/{scene_id}.laz"
@@ -84,8 +85,8 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         db.add(art)
         db.add(AuditLog(scene_id=scene_id, action="export_allowed", details={"type": type, "uri": uri}))
         db.commit()
-
-        return {"scene_id": str(scene_id), "type": type, "uri": uri}
+        EXPORT_COUNT.labels(SERVICE_NAME, type, "allowed").inc()
+        return {"scene_id": str(scene_id), "type": type, "uri": uri, "artifact_id": str(art.id)}
     finally:
         db.close()
 

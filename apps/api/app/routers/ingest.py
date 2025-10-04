@@ -37,6 +37,7 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         input_path = payload.source_uri  # For now assume local path; S3 support later
         output_path = str(Path(td) / f"{scene.id}.laz")
 
+        used_pdal = False
         if has_pdal():
             pipeline = build_ingest_pipeline(
                 input_path,
@@ -50,6 +51,7 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
             )
             try:
                 run_pipeline(pipeline)
+                used_pdal = True
             except Exception:
                 # Graceful fallback when PDAL fails at runtime
                 Path(output_path).touch()
@@ -81,6 +83,7 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         "density": density,
         "completeness": completeness,
     }
+    metrics["used_pdal"] = 1.0 if used_pdal else 0.0
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
     db.commit()

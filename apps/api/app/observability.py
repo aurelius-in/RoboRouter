@@ -17,6 +17,11 @@ REQUEST_COUNT = Counter(
     "Total HTTP requests",
     ["service", "method", "endpoint", "status"],
 )
+EXPORT_COUNT = Counter(
+    "roborouter_exports_total",
+    "Total export requests",
+    ["service", "type", "status"],
+)
 REQUEST_LATENCY = Histogram(
     "roborouter_request_latency_seconds",
     "Request latency in seconds",

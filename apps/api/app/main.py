@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .config import settings
 
 from .routers.ingest import router as ingest_router
 from .routers.pipeline import router as pipeline_router
@@ -24,7 +25,7 @@ setup_otel("roborouter-api")
 # Allow local Vite UI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,6 +83,11 @@ def health() -> Dict[str, Any]:
             "ROBOROUTER_PROFILE": os.getenv("ROBOROUTER_PROFILE", "default"),
         },
     }
+
+
+@app.get("/meta")
+def meta() -> Dict[str, Any]:
+    return {"version": app.version, "name": app.title, "cors": settings.cors_origins}
 
 
 app.include_router(ingest_router)
