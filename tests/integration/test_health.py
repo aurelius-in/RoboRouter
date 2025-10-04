@@ -21,3 +21,11 @@ def test_meta() -> None:  # type: ignore[no-untyped-def]
     body = r.json()
     assert "version" in body and "name" in body and isinstance(body.get("cors"), list)
 
+
+def test_stats() -> None:  # type: ignore[no-untyped-def]
+    client = TestClient(app)
+    r = client.get("/stats")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(["scenes", "artifacts", "metrics", "exports"]).issubset(body.keys())
+

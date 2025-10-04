@@ -37,5 +37,6 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
   apiPost<any>(`/export?scene_id=${sceneId}&type=${type}&crs=${crs}`)
 
 export const getMeta = () => apiGet<any>('/meta')
+export const getStats = () => apiGet<any>('/stats')
 
 

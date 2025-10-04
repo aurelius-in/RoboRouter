@@ -17,6 +17,7 @@ from .routers.navigation import router as navigation_router
 from .routers.scene import router as scene_router
 from .observability import setup_metrics
 from .otel import setup_otel
+from .routers.stats import router as stats_router
 
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
@@ -30,6 +31,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional API key protection for non-GET requests
+@app.middleware("http")
+async def api_key_guard(request, call_next):  # type: ignore[no-untyped-def]
+    try:
+        from fastapi import Request, Response
+    except Exception:
+        return await call_next(request)
+
+    if settings.api_key and request.method not in ("GET", "OPTIONS"):
+        key = request.headers.get("x-api-key") or request.headers.get("X-API-Key")
+        if key != settings.api_key:
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
 
 
 def _get_gpu_inventory() -> List[Dict[str, Any]]:
@@ -97,6 +114,7 @@ app.include_router(report_router)
 app.include_router(export_router)
 app.include_router(navigation_router)
 app.include_router(scene_router)
+app.include_router(stats_router)
 
 # Observability
 setup_metrics(app)

@@ -14,6 +14,8 @@ from ..pipeline.registration import register_clouds
 from ..pipeline.segmentation import run_segmentation
 from ..pipeline.change_detection import run_change_detection
 from ..storage.minio_client import get_minio_client, upload_file
+from ..observability import REQUEST_COUNT, REQUEST_LATENCY, SERVICE_NAME
+import time
 from ..orchestrator.stub import OrchestratorStub
 
 
@@ -36,6 +38,7 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         # out already declared with orchestrator stub
 
         if "registration" in steps:
+            _t0 = time.time()
             ingest_art = db.execute(
                 select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.desc())
             ).scalars().first()
@@ -70,8 +73,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 db.refresh(art_resid)
                 out["artifacts"].extend([str(art_aligned.id), str(art_resid.id)])
                 out["metrics"].update({"rmse": result.rmse, "inlier_ratio": result.inlier_ratio})
+            REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "registration", "200").inc()
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(time.time() - _t0)
 
         if "segmentation" in steps:
+            _t0 = time.time()
             # Prefer aligned artifact if available
             aligned_art = db.execute(
                 select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "aligned").order_by(Artifact.created_at.desc())
@@ -108,8 +114,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     db.refresh(a)
                     out["artifacts"].append(str(a.id))
                 out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
+            REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "segmentation", "200").inc()
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(time.time() - _t0)
 
         if "change_detection" in steps:
+            _t0 = time.time()
             # Choose baseline (ingested) and current (aligned if available, else ingested)
             baseline_art = db.execute(
                 select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.asc())
@@ -159,6 +168,8 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     "change_recall": float(cd_out["recall"]),      # type: ignore[index]
                     "change_f1": float(cd_out["f1"]),              # type: ignore[index]
                 })
+            REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
+            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(time.time() - _t0)
 
         return out
     finally:
