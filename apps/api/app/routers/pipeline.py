@@ -17,6 +17,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..observability import REQUEST_COUNT, REQUEST_LATENCY, SERVICE_NAME
 import time
 from ..utils.hash import sha256_file
+from ..mlflow_stub import log_metrics as mlflow_log_metrics
 from ..orchestrator.stub import OrchestratorStub
 
 
@@ -82,6 +83,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "registration", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(dur)
             out["metrics"]["registration_ms"] = round(dur * 1000.0, 2)
+            try:
+                mlflow_log_metrics({"registration_ms": out["metrics"]["registration_ms"], "rmse": float(out["metrics"]["rmse"]), "inlier_ratio": float(out["metrics"]["inlier_ratio"])})
+            except Exception:
+                pass
 
         if "segmentation" in steps:
             _t0 = time.time()
@@ -125,6 +130,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "segmentation", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(dur)
             out["metrics"]["segmentation_ms"] = round(dur * 1000.0, 2)
+            try:
+                mlflow_log_metrics({"segmentation_ms": out["metrics"]["segmentation_ms"], "miou": float(out["metrics"]["miou"])})
+            except Exception:
+                pass
 
         if "change_detection" in steps:
             _t0 = time.time()
@@ -181,6 +190,15 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
             out["metrics"]["change_detection_ms"] = round(dur * 1000.0, 2)
+            try:
+                mlflow_log_metrics({
+                    "change_detection_ms": out["metrics"]["change_detection_ms"],
+                    "change_precision": float(out["metrics"]["change_precision"]),
+                    "change_recall": float(out["metrics"]["change_recall"]),
+                    "change_f1": float(out["metrics"]["change_f1"]),
+                })
+            except Exception:
+                pass
 
         return out
     finally:

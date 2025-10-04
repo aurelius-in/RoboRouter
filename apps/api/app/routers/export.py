@@ -14,6 +14,7 @@ from ..policy.opa import evaluate_export_policy
 from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
 from ..storage.minio_client import get_minio_client, upload_file
+from ..utils.sign import sign_dict
 
 
 router = APIRouter()
@@ -85,7 +86,11 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 raise HTTPException(status_code=400, detail="Unsupported export type")
         art = Artifact(scene_id=scene_id, type=f"export_{type}", uri=uri)
         db.add(art)
-        db.add(AuditLog(scene_id=scene_id, action="export_allowed", details={"type": type, "uri": uri}))
+        details = {"type": type, "uri": uri, "crs": crs}
+        sig = sign_dict({"scene_id": str(scene_id), "type": type, "crs": crs})
+        if sig:
+            details["signature"] = sig
+        db.add(AuditLog(scene_id=scene_id, action="export_allowed", details=details))
         db.commit()
         EXPORT_COUNT.labels(SERVICE_NAME, type, "allowed").inc()
         try:
