@@ -4,7 +4,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -13,6 +13,7 @@ from ..models import Artifact, Metric, Scene
 from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count
 from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file
+from ..utils.crs import validate_crs
 
 
 router = APIRouter()
@@ -25,6 +26,8 @@ def startup() -> None:
 
 @router.post("/ingest", response_model=IngestResponse)
 def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestResponse:
+    if not validate_crs(payload.crs):
+        raise HTTPException(status_code=400, detail="Invalid CRS")
     scene = Scene(source_uri=payload.source_uri, crs=payload.crs, sensor_meta=payload.sensor_meta)
     db.add(scene)
     db.commit()
