@@ -84,6 +84,14 @@ export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; l
   const qs = p.toString()
   return apiGet<any>(`/runs${qs ? `?${qs}` : ''}`)
 }
+export const getRunsCsv = (opts?: { only_failed?: boolean; only_passed?: boolean; limit?: number }) => {
+  const p = new URLSearchParams()
+  if (opts?.only_failed) p.set('only_failed', 'true')
+  if (opts?.only_passed) p.set('only_passed', 'true')
+  if (opts?.limit) p.set('limit', String(opts.limit))
+  const qs = p.toString()
+  return fetch(`${API_BASE}/runs/csv${qs ? `?${qs}` : ''}`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('runs csv failed'); return r.text() })
+}
 export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
 export const getModels = () => apiGet<any>('/models')
 export const getGates = (sceneId: string) => apiGet<any>(`/gates?scene_id=${encodeURIComponent(sceneId)}`)
