@@ -43,6 +43,8 @@ export const generateReport = (sceneId: string) =>
 export type ArtifactUrl = { artifact_id: string; type: string; url: string; uri?: string; expires_in_seconds?: number | null }
 export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/artifacts/${artifactId}`)
 
+export const getLatestArtifact = (sceneId: string, type: string) => apiGet<ArtifactUrl>(`/artifacts/latest?scene_id=${encodeURIComponent(sceneId)}&type=${encodeURIComponent(type)}`)
+
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
 export type SceneMetric = { name: string; value: number; created_at: string }
 export type SceneAudit = { id: string; action: string; details?: Record<string, any> | null; created_at: string }

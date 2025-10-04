@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -410,6 +410,22 @@ export const App: React.FC = () => {
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
+        {selectedArtifactId && (
+          <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
+            {/* Show expiry if available */}
+            <span>
+              {(async () => {
+                try {
+                  const info = await getArtifactUrl(selectedArtifactId)
+                  if (info.expires_in_seconds !== undefined && info.expires_in_seconds !== null) {
+                    return `expires in ~${info.expires_in_seconds}s`
+                  }
+                } catch {}
+                return null
+              })()}
+            </span>
+          </div>
+        )}
         {selectedArtifactId && (
           <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
             {artifactType && <span>type={artifactType} </span>}

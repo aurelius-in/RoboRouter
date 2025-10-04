@@ -47,9 +47,20 @@ def export_laz(input_laz: str, out_laz: str) -> str:
 
 def export_gltf(input_laz: str, out_gltf: str) -> str:
 	ensure_parent(out_gltf)
-	# Placeholder: real pipeline would mesh/triangulate first
+	# Placeholder: write a minimal valid glTF 2.0 JSON so viewers load
 	try:
-		Path(out_gltf).write_text("glTF placeholder\n", encoding="utf-8")
+		minimal_gltf = """
+{
+  "asset": { "version": "2.0", "generator": "RoboRouter Exporter" },
+  "scenes": [{ "nodes": [0] }],
+  "nodes": [{ "mesh": 0 }],
+  "meshes": [{ "primitives": [{ "mode": 4, "attributes": { "POSITION": 0 } }] }],
+  "buffers": [{ "uri": "data:application/octet-stream;base64,AAABAAIAAAAAAAAAAAAAAAAAAAAAAA==", "byteLength": 24 }],
+  "bufferViews": [{ "buffer": 0, "byteOffset": 0, "byteLength": 24, "target": 34962 }],
+  "accessors": [{ "bufferView": 0, "byteOffset": 0, "componentType": 5126, "count": 3, "type": "VEC3", "max": [1,1,0], "min": [0,0,0] }]
+}
+"""
+		Path(out_gltf).write_text(minimal_gltf.strip() + "\n", encoding="utf-8")
 	except Exception:
 		Path(out_gltf).write_text("glTF export failed; placeholder\n", encoding="utf-8")
 	return out_gltf

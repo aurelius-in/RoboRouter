@@ -139,6 +139,7 @@ def meta() -> Dict[str, Any]:
         "cors": settings.cors_origins,
         "api_key_required": settings.api_key is not None,
         "rate_limit_per_minute": settings.rate_limit_rpm,
+        "presign_expires_seconds": settings.presign_expires_seconds,
     }
 
 
