@@ -22,6 +22,9 @@ Prereqs: Docker with NVIDIA runtime. Then:
 
 Ingest
 ------
+Segmentation
+------------
+- Run `/pipeline/run` with `steps=["segmentation"]` after ingest (or registration) to generate class, confidence, and entropy overlays and a stub mIoU metric.
 - POST `/ingest` with `{source_uri, crs, sensor_meta}` to ingest and QA a scan.
 - For now, if PDAL is not installed in the API image, the pipeline stubs out and creates an empty output artifact to exercise the flow end-to-end.
 
