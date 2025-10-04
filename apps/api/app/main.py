@@ -76,7 +76,10 @@ async def rate_limiter(request, call_next):  # type: ignore[no-untyped-def]
     if count > limit:
         from fastapi.responses import JSONResponse
 
-        return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        resp = JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        retry_after = int(max(1, 60 - int(now - ts)))
+        resp.headers["Retry-After"] = str(retry_after)
+        return resp
     return await call_next(request)
 
 
