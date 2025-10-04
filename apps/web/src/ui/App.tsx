@@ -115,6 +115,9 @@ export const App: React.FC = () => {
         <div>
           <h3>Export</h3>
           <button onClick={onExportPotree}>Potree</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting LAZ ...'); try{ await requestExport(sceneId, 'laz', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('LAZ export done.'); }catch{ setStatus('Export failed.') } }}>LAZ</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting glTF ...'); try{ await requestExport(sceneId, 'gltf', 'EPSG:4978'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('glTF export done.'); }catch{ setStatus('Export failed.') } }}>glTF</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting WebM ...'); try{ await requestExport(sceneId, 'webm', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('WebM export done.'); }catch{ setStatus('Export failed.') } }}>WebM</button>
         </div>
       </div>
 
@@ -126,6 +129,7 @@ export const App: React.FC = () => {
             <li key={a.id}>
               <code>{a.id}</code> — {a.type} — {new Date(a.created_at).toLocaleString()}
               <button style={{ marginLeft: 8 }} onClick={()=>{ setSelectedArtifactId(a.id) }}>Select</button>
+              <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); window.open(info.url, '_blank') }}>Open</button>
             </li>
           ))}
         </ul>
