@@ -33,6 +33,16 @@
 Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves. 
 
 Getting started
+
+### Golden scene gates
+
+For smoke validation on a "golden" scene, the pipeline enforces minimal gates (stub defaults for now):
+
+- Registration: rmse <= 0.10, inlier_ratio >= 0.70
+- Segmentation: miou >= 0.70
+- Change detection: change_f1 >= 0.70
+
+These thresholds are covered by `tests/integration/test_golden_gates.py` and can be tuned via `configs/thresholds.yaml` in future updates.
 ----------------
 Prereqs: Docker with NVIDIA runtime. Then:
 
@@ -56,6 +66,10 @@ Change Detection
 ----------------
 Navigation
 ----------
+Notes on Optional Dependencies
+------------------------------
+- PDAL: If present in the API image, ingest can run real filtering/downsampling; otherwise placeholders are used.
+- Open3D: If present, registration prefers Open3D and writes real aligned outputs for supported formats (e.g., PLY/PCD); otherwise a stub path is used.
 - GET `/nav/map/{scene_id}` returns occupancy/ESDF metadata and stores a map artifact.
 - POST `/nav/plan` with `{scene_id, start, goal, constraints}` returns a stub route, guardian decision (allowed/reasons), and a cost breakdown.
 - Run `/pipeline/run` with `steps=["change_detection"]` to produce a change mask and delta table with stub precision/recall/F1 metrics.

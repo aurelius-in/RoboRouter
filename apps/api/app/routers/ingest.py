@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..db import Base, engine, get_db
 from ..models import Artifact, Metric, Scene
-from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline
+from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count
 from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file
 
@@ -59,8 +59,22 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         db.refresh(art)
         artifact_ids.append(art.id)
 
-    # Stub metrics; replace with real counts/density later
-    metrics = {"point_count_in": 0.0, "point_count_out": 0.0, "density": 0.0, "completeness": 0.0}
+    # Metrics: attempt real counts with PDAL, otherwise fall back to zeros
+    count_in = get_point_count(payload.source_uri) if has_pdal() else None
+    processed_key = object_name
+    processed_local = None
+    # When PDAL is present we just wrote output_path; counts from it if available
+    if has_pdal():
+        processed_local = output_path
+    count_out = get_point_count(processed_local) if processed_local else None
+    completeness = (float(count_out) / float(count_in)) if (count_in and count_out and count_in > 0) else 0.0
+    density = float(count_out) if count_out else 0.0
+    metrics = {
+        "point_count_in": float(count_in) if count_in else 0.0,
+        "point_count_out": float(count_out) if count_out else 0.0,
+        "density": density,
+        "completeness": completeness,
+    }
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
     db.commit()
