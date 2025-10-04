@@ -13,6 +13,7 @@ from ..models import Artifact, AuditLog, Metric, Scene
 from ..report.builder import build_html_report, html_to_pdf
 from ..report.why import top_reasons
 from ..storage.minio_client import get_minio_client, upload_file
+from ..utils.sign import sign_dict
 
 
 router = APIRouter()
@@ -79,7 +80,11 @@ def generate_report(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-u
             db.add(Artifact(scene_id=scene_id, type="report_html", uri=f"s3://roborouter-processed/{html_obj}"))
         if pdf_ok:
             db.add(Artifact(scene_id=scene_id, type="report_pdf", uri=f"s3://roborouter-processed/{pdf_obj}"))
-        db.add(AuditLog(scene_id=scene_id, action="report_generated", details={"metrics": metrics, "overlays": list(overlays.keys())}))
+        details = {"metrics": metrics, "overlays": list(overlays.keys())}
+        sig = sign_dict({"scene_id": str(scene_id), **{k: str(v) for k, v in metrics.items()}})
+        if sig:
+            details["signature"] = sig
+        db.add(AuditLog(scene_id=scene_id, action="report_generated", details=details))
         db.commit()
 
         return {
