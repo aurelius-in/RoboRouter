@@ -24,6 +24,9 @@ Ingest
 ------
 Segmentation
 ------------
+Change Detection
+----------------
+- Run `/pipeline/run` with `steps=["change_detection"]` to produce a change mask and delta table with stub precision/recall/F1 metrics.
 - Run `/pipeline/run` with `steps=["segmentation"]` after ingest (or registration) to generate class, confidence, and entropy overlays and a stub mIoU metric.
 - POST `/ingest` with `{source_uri, crs, sensor_meta}` to ingest and QA a scan.
 - For now, if PDAL is not installed in the API image, the pipeline stubs out and creates an empty output artifact to exercise the flow end-to-end.

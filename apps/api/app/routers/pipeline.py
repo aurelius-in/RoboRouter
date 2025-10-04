@@ -12,6 +12,7 @@ from ..db import SessionLocal
 from ..models import Artifact, Metric, Scene
 from ..pipeline.registration import register_clouds
 from ..pipeline.segmentation import run_segmentation
+from ..pipeline.change_detection import run_change_detection
 from ..storage.minio_client import get_minio_client, upload_file
 
 
@@ -102,6 +103,57 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     db.refresh(a)
                     out["artifacts"].append(str(a.id))
                 out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
+
+        if "change_detection" in steps:
+            # Choose baseline (ingested) and current (aligned if available, else ingested)
+            baseline_art = db.execute(
+                select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.asc())
+            ).scalars().first()
+            current_art = db.execute(
+                select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "aligned").order_by(Artifact.created_at.desc())
+            ).scalars().first()
+            if not current_art:
+                current_art = db.execute(
+                    select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.desc())
+                ).scalars().first()
+
+            if not baseline_art or not current_art:
+                raise HTTPException(status_code=400, detail="No suitable baseline/current artifacts for change detection")
+
+            client = get_minio_client()
+            with tempfile.TemporaryDirectory() as td:
+                # Simulate change detection with temp inputs
+                base_path = str((__import__("pathlib").Path(td) / "baseline.laz"))
+                curr_path = str((__import__("pathlib").Path(td) / "current.laz"))
+                open(base_path, "wb").close()
+                open(curr_path, "wb").close()
+                cd_out = run_change_detection(base_path, curr_path, td)
+
+                mask_obj = f"change/mask_{scene_id}.json"
+                delta_obj = f"change/delta_{scene_id}.json"
+                try:
+                    upload_file(client, "roborouter-processed", mask_obj, cd_out["change_mask_path"])  # type: ignore[index]
+                    upload_file(client, "roborouter-processed", delta_obj, cd_out["delta_table_path"])  # type: ignore[index]
+                except Exception as exc:  # noqa: BLE001
+                    # Log and proceed to record metrics even if uploads fail
+                    import logging
+                    logging.getLogger(__name__).exception("Upload failed: %s", exc)
+
+                art_mask = Artifact(scene_id=scene_id, type="change_mask", uri=f"s3://roborouter-processed/{mask_obj}")
+                art_delta = Artifact(scene_id=scene_id, type="change_delta", uri=f"s3://roborouter-processed/{delta_obj}")
+                db.add_all([art_mask, art_delta])
+                db.add(Metric(scene_id=scene_id, name="change_precision", value=float(cd_out["precision"])) )  # type: ignore[index]
+                db.add(Metric(scene_id=scene_id, name="change_recall", value=float(cd_out["recall"])) )  # type: ignore[index]
+                db.add(Metric(scene_id=scene_id, name="change_f1", value=float(cd_out["f1"])) )  # type: ignore[index]
+                db.commit()
+                for a in (art_mask, art_delta):
+                    db.refresh(a)
+                    out["artifacts"].append(str(a.id))
+                out["metrics"].update({
+                    "change_precision": float(cd_out["precision"]),  # type: ignore[index]
+                    "change_recall": float(cd_out["recall"]),      # type: ignore[index]
+                    "change_f1": float(cd_out["f1"]),              # type: ignore[index]
+                })
 
         return out
     finally:

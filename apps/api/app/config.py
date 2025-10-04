@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     minio_bucket_raw: str = "roborouter-raw"
     minio_bucket_processed: str = "roborouter-processed"
 
+    # Change detection defaults
+    change_voxel_size_m: float = 0.10
+    change_min_points_per_voxel: int = 3
+
     class Config:
         env_prefix = "ROBOROUTER_"
 
