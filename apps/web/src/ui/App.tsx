@@ -153,15 +153,10 @@ export const App: React.FC = () => {
   async function openLatestByType(type: string) {
     if (!sceneId) return
     try {
-      if (artifacts.length === 0) {
-        const sc = await getScene(sceneId)
-        setArtifacts(sc.artifacts)
-      }
-      const list = artifacts.length ? artifacts : (await getScene(sceneId)).artifacts
-      const found = [...list].reverse().find(a => a.type === type)
-      if (!found) { setStatus(`No artifact of type ${type}`); return }
-      setSelectedArtifactId(found.id)
-      const info = await getArtifactUrl(found.id)
+      // Prefer backend latest lookup
+      const latest = await getLatestArtifact(sceneId, type)
+      setSelectedArtifactId(latest.artifact_id)
+      const info = latest
       setArtifactUrl(info.url)
       setArtifactType(info.type)
       setArtifactExpiry(info.expires_in_seconds ?? null)
