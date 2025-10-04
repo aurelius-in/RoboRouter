@@ -49,6 +49,29 @@ async def api_key_guard(request, call_next):  # type: ignore[no-untyped-def]
     return await call_next(request)
 
 
+# Simple in-memory rate limiter (best-effort, per-process)
+_RL_BUCKET: dict[str, tuple[float, int]] = {}
+
+
+@app.middleware("http")
+async def rate_limiter(request, call_next):  # type: ignore[no-untyped-def]
+    import time as _t
+    key = request.client.host if getattr(request, "client", None) else "anon"
+    window = 60.0
+    limit = max(1, int(settings.rate_limit_rpm))
+    now = _t.time()
+    ts, count = _RL_BUCKET.get(key, (now, 0))
+    if now - ts > window:
+        ts, count = now, 0
+    count += 1
+    _RL_BUCKET[key] = (ts, count)
+    if count > limit:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+    return await call_next(request)
+
+
 def _get_gpu_inventory() -> List[Dict[str, Any]]:
     try:
         # Prefer nvidia-smi if available; avoid outbound calls.

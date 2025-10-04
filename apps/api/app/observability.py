@@ -22,6 +22,13 @@ EXPORT_COUNT = Counter(
     "Total export requests",
     ["service", "type", "status"],
 )
+
+EXPORT_LATENCY = Histogram(
+    "roborouter_export_latency_seconds",
+    "Export latency in seconds",
+    ["service", "type"],
+    buckets=(0.1, 0.5, 1, 2, 5, 10, 20),
+)
 REQUEST_LATENCY = Histogram(
     "roborouter_request_latency_seconds",
     "Request latency in seconds",
