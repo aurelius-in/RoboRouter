@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import PlainTextResponse
 import time
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from ..storage.minio_client import get_minio_client, presigned_get_url
 from ..config import settings
 from ..storage.utils import parse_s3_uri
 from sqlalchemy import select
+from ..deps import require_api_key
 
 
 router = APIRouter(tags=["Artifacts"])
@@ -148,13 +149,22 @@ def artifact_head(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-
         db.close()
 
 
-@router.delete("/artifacts/{artifact_id}")
+@router.delete("/artifacts/{artifact_id}", dependencies=[Depends(require_api_key)])
 def delete_artifact(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
         art = db.get(Artifact, artifact_id)
         if not art:
             raise HTTPException(status_code=404, detail="Artifact not found")
+        # Best-effort removal from object store when applicable
+        if art.uri.startswith("s3://"):
+            try:
+                bucket, key = parse_s3_uri(art.uri)
+                client = get_minio_client()
+                client.remove_object(bucket, key)
+            except Exception:
+                # ignore removal failures
+                pass
         db.delete(art)
         db.commit()
         # Best-effort cache invalidation
