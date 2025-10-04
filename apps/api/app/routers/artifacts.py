@@ -84,3 +84,10 @@ def get_latest_artifact(scene_id: uuid.UUID, type: str) -> Dict[str, Any]:  # ty
     finally:
         db.close()
 
+
+@router.post("/artifacts/refresh/{artifact_id}")
+def refresh_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """Invalidate local presign cache and return a fresh URL."""
+    _URL_CACHE.pop(str(artifact_id), None)
+    return get_artifact_url(artifact_id)
+

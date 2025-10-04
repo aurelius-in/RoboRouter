@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -479,6 +479,7 @@ export const App: React.FC = () => {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>
+          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}

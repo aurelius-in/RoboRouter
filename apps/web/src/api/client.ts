@@ -47,6 +47,8 @@ export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/arti
 
 export const getLatestArtifact = (sceneId: string, type: string) => apiGet<ArtifactUrl>(`/artifacts/latest?scene_id=${encodeURIComponent(sceneId)}&type=${encodeURIComponent(type)}`)
 
+export const refreshArtifact = (artifactId: string) => apiPost<ArtifactUrl>(`/artifacts/refresh/${artifactId}`)
+
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
 export type SceneMetric = { name: string; value: number; created_at: string }
 export type SceneAudit = { id: string; action: string; details?: Record<string, any> | null; created_at: string }
