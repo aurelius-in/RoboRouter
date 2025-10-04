@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -137,6 +137,7 @@ export const App: React.FC = () => {
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
+  const allowedCrsOptions = (health?.cfg?.allowed_crs) || ['EPSG:3857', 'EPSG:4978', 'EPSG:26915']
   const [exportType, setExportType] = useState<string>('potree')
 
   async function openLatestByType(type: string) {
@@ -246,6 +247,36 @@ export const App: React.FC = () => {
 
       <div style={{ display: 'flex', gap: 24 }}>
         <div>
+          <h3>Upload & Ingest</h3>
+          <input type="file" id="rr_file" />
+          <label style={{ marginLeft: 6 }}>CRS&nbsp;
+            <select value={exportCrs} onChange={(e)=>setExportCrs(e.target.value)}>
+              {allowedCrsOptions.map((crs: string) => (
+                <option key={crs} value={crs}>{crs}</option>
+              ))}
+            </select>
+          </label>
+          <button style={{ marginLeft: 6 }} onClick={async()=>{
+            const input = document.getElementById('rr_file') as HTMLInputElement | null
+            if (!input || !input.files || input.files.length === 0) { setStatus('Select a file first'); return }
+            try {
+              const up = await uploadFile(input.files[0])
+              setStatus('Uploaded; ingesting ...')
+              const resp = await apiPost<any>('/ingest', { source_uri: up.path, crs: exportCrs, sensor_meta: {} })
+              const sid = resp?.scene_id
+              if (sid) {
+                setSceneId(sid)
+                try { const sc = await getScene(sid); setArtifacts(sc.artifacts); setMetrics(sc.metrics || []) } catch {}
+                setStatus('Ingest complete.')
+              } else {
+                setStatus('Ingest response missing scene_id')
+              }
+            } catch (e: any) {
+              setStatus(`Upload/Ingest failed: ${e?.message || 'error'}`)
+            }
+          }}>Upload & Ingest</button>
+        </div>
+        <div>
           <h3>Dataset / Scene</h3>
           <input placeholder="scene_id" value={sceneId} onChange={(e) => setSceneId(e.target.value)} />
           <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await navigator.clipboard.writeText(sceneId); setStatus('Scene ID copied') } catch { setStatus('Copy failed') } }}>Copy</button>
@@ -314,9 +345,9 @@ export const App: React.FC = () => {
             </label>
             <label>CRS&nbsp;
               <select value={exportCrs} onChange={(e)=>setExportCrs(e.target.value)}>
-                <option value="EPSG:3857">EPSG:3857</option>
-                <option value="EPSG:4978">EPSG:4978</option>
-                <option value="EPSG:26915">EPSG:26915</option>
+                {allowedCrsOptions.map((crs: string) => (
+                  <option key={crs} value={crs}>{crs}</option>
+                ))}
               </select>
             </label>
             <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await policyCheck(exportType, exportCrs); setStatus(r.allowed ? 'Policy: allowed' : `Policy: blocked (${r.reason})`) } catch { setStatus('Policy check failed') } }}>Check policy</button>

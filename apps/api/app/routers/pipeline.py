@@ -217,6 +217,19 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             except Exception:
                 out["metrics"]["change_detection_pass"] = 0.0
 
+        # Compute overall pass from step gates when available
+        try:
+            reg_pass = bool(int(out["metrics"].get("registration_pass", 0.0)))
+            seg_pass = bool(int(out["metrics"].get("segmentation_pass", 0.0)))
+            chg_pass = bool(int(out["metrics"].get("change_detection_pass", 0.0)))
+            overall_pass = float(reg_pass and seg_pass and chg_pass)
+            out["metrics"]["overall_pass"] = overall_pass
+            # persist overall_pass metric
+            db.add(Metric(scene_id=scene_id, name="overall_pass", value=float(overall_pass)))
+            db.commit()
+        except Exception:
+            pass
+
         return out
     finally:
         db.close()
