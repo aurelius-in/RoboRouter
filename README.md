@@ -86,7 +86,7 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 ## 📈 Flow
 
 ```mermaid
-%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
+%%{init: {"themeVariables": {"fontSize": "24px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph TD
   U["Web UI"] -->|Run| A["Ingest"]
   A --> B["QA / Calibration"]
@@ -157,7 +157,7 @@ Potree / Web 3D Viewer + Report + API
 ### Mermaid Architecture 
 
 ```mermaid
-%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
+%%{init: {"themeVariables": {"fontSize": "24px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph LR
   User["Operator"] --> UI["React + Vite UI\n(Three.js / Potree)"]
   UI --> API["FastAPI / LangGraph Hooks"]
@@ -286,6 +286,10 @@ Generate costmaps and explainable routes for drones or rovers navigating clutter
 * **glTF / OBJ meshes**
 * **Costmaps and routes** for navigation systems
 * **OPA-validated exports** for policy compliance
+Observability
+-------------
+- Prometheus at `http://localhost:9090` scrapes API `/metrics`.
+- Grafana at `http://localhost:3000` can be used to build dashboards.
 
 ### Exports & Policy
 - Use `POST /export?scene_id=...&type=potree&crs=EPSG:3857` to request an export.
