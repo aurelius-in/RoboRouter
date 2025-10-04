@@ -42,7 +42,7 @@ export const runPipeline = (sceneId: string, steps: string[]) =>
 export const generateReport = (sceneId: string) =>
   apiPost<any>(`/report/generate?scene_id=${sceneId}`)
 
-export type ArtifactUrl = { artifact_id: string; type: string; url: string; uri?: string; expires_in_seconds?: number | null }
+export type ArtifactUrl = { artifact_id: string; type: string; url: string; uri?: string; expires_in_seconds?: number | null; size_bytes?: number | null; content_type?: string | null; last_modified?: number | null }
 export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/artifacts/${artifactId}`)
 
 export const getLatestArtifact = (sceneId: string, type: string) => apiGet<ArtifactUrl>(`/artifacts/latest?scene_id=${encodeURIComponent(sceneId)}&type=${encodeURIComponent(type)}`)

@@ -27,6 +27,9 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
         if not art:
             raise HTTPException(status_code=404, detail="Artifact not found")
         client = get_minio_client()
+        size_bytes: int | None = None
+        content_type: str | None = None
+        last_modified: float | None = None
         if art.uri.startswith("s3://"):
             bucket, key = parse_s3_uri(art.uri)
             # Simple in-process cache for presigned URLs
@@ -35,10 +38,29 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
                 url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
                 _cache_url(str(artifact_id), url, settings.presign_expires_seconds)
             expires_in = _ttl_remaining(str(artifact_id))
+            try:
+                stat = client.stat_object(bucket, key)
+                size_bytes = getattr(stat, "size", None)
+                content_type = getattr(stat, "content_type", None)
+                # stat.last_modified is datetime
+                lm = getattr(stat, "last_modified", None)
+                if lm is not None:
+                    last_modified = lm.timestamp()
+            except Exception:
+                pass
         else:
             url = art.uri
             expires_in = None
-        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri, "expires_in_seconds": expires_in}
+        return {
+            "artifact_id": str(artifact_id),
+            "type": art.type,
+            "url": url,
+            "uri": art.uri,
+            "expires_in_seconds": expires_in,
+            "size_bytes": size_bytes,
+            "content_type": content_type,
+            "last_modified": last_modified,
+        }
     finally:
         db.close()
 
