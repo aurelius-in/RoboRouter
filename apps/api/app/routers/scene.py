@@ -42,16 +42,19 @@ def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-de
 
 
 @router.get("/scenes")
-def list_scenes() -> List[Dict[str, Any]]:  # type: ignore[no-untyped-def]
-	"""List recent scenes with basic metadata."""
-	db: Session = SessionLocal()
-	try:
-		scenes = db.execute(select(Scene).order_by(Scene.created_at.desc()).limit(100)).scalars().all()
-		return [
-			{"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}
-			for s in scenes
-		]
-	finally:
-		db.close()
+def list_scenes(offset: int = 0, limit: int = 50) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """List recent scenes with basic metadata (paginated)."""
+    db: Session = SessionLocal()
+    try:
+        q = select(Scene).order_by(Scene.created_at.desc())
+        total = db.execute(select(Scene)).scalars().count() if hasattr(db, "query") else None  # best-effort
+        scenes = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
+        items = [
+            {"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}
+            for s in scenes
+        ]
+        return {"items": items, "offset": offset, "limit": limit, "total": total}
+    finally:
+        db.close()
 
 

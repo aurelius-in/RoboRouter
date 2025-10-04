@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -25,16 +25,23 @@ export const App: React.FC = () => {
   const [sceneId, setSceneId] = useState<string>('')
   const [status, setStatus] = useState<string>('')
   const [artifacts, setArtifacts] = useState<SceneArtifact[]>([])
+  const [metrics, setMetrics] = useState<{ name: string; value: number; created_at: string }[]>([])
 
   useEffect(() => {
-    getHealth()
-      .then(setHealth)
+    Promise.all([getHealth(), getMeta()])
+      .then(([h, m]) => setHealth({ ...h, meta: m }))
       .finally(() => setLoading(false))
   }, [])
 
   const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
-  async function refreshScenes() {
-    try { const lst = await apiGet<any[]>('/scenes'); setSceneList(lst as any[]) } catch {}
+  const [scenesOffset, setScenesOffset] = useState<number>(0)
+  const [scenesLimit, setScenesLimit] = useState<number>(50)
+  async function refreshScenes(nextOffset: number = scenesOffset) {
+    try {
+      const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
+      setSceneList((res.items ?? []) as any[])
+      setScenesOffset(nextOffset)
+    } catch {}
   }
 
   const gpu = useMemo(() => (health?.gpu ?? [] as any[]).map((g: any) => g.name).join(', '), [health])
@@ -43,10 +50,11 @@ export const App: React.FC = () => {
     if (!sceneId) return
     setStatus('Running registration → segmentation → change ...')
     await runPipeline(sceneId, ['registration', 'segmentation', 'change_detection'])
-    setStatus('Done.')
+    setStatus('Done. (check orchestrator plan in console)')
     try {
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
+      setMetrics(sc.metrics || [])
     } catch {}
   }
 
@@ -59,6 +67,7 @@ export const App: React.FC = () => {
     try {
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
+      setMetrics(sc.metrics || [])
     } catch {}
   }
 
@@ -69,6 +78,7 @@ export const App: React.FC = () => {
       await requestExport(sceneId, 'potree', 'EPSG:3857')
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
+      setMetrics(sc.metrics || [])
       const potree = [...sc.artifacts].reverse().find(a => a.type === 'export_potree')
       if (potree) {
         const info = await getArtifactUrl(potree.id)
@@ -89,6 +99,7 @@ export const App: React.FC = () => {
   const [artifactType, setArtifactType] = useState<string>('')
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
+  const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
 
   async function openLatestByType(type: string) {
     if (!sceneId) return
@@ -142,12 +153,19 @@ export const App: React.FC = () => {
             &nbsp; <b>Open3D:</b> {health.deps.open3d?.available ? 'yes' : 'no'}{health.deps.open3d?.version ? ` (${health.deps.open3d.version})` : ''}
           </span>
         )}
+        {health?.meta && (
+          <span style={{ marginLeft: 12, color: '#777' }}>v{health.meta.version}</span>
+          {Array.isArray(health?.meta?.cors) && health.meta.cors.length > 0 && (
+            <span style={{ marginLeft: 8, color: '#999' }}>CORS: {health.meta.cors.join(', ')}</span>
+          )}
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 24 }}>
         <div>
           <h3>Dataset / Scene</h3>
           <input placeholder="scene_id" value={sceneId} onChange={(e) => setSceneId(e.target.value)} />
+          <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await navigator.clipboard.writeText(sceneId); setStatus('Scene ID copied') } catch { setStatus('Copy failed') } }}>Copy</button>
         </div>
 
         <div>
@@ -192,14 +210,25 @@ export const App: React.FC = () => {
 
         <div>
           <h3>Export</h3>
+          <div style={{ marginBottom: 6 }}>
+            <label>CRS&nbsp;
+              <select value={exportCrs} onChange={(e)=>setExportCrs(e.target.value)}>
+                <option value="EPSG:3857">EPSG:3857</option>
+                <option value="EPSG:4978">EPSG:4978</option>
+                <option value="EPSG:26915">EPSG:26915</option>
+              </select>
+            </label>
+          </div>
           <button onClick={onExportPotree}>Potree</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting LAZ ...'); try{ await requestExport(sceneId, 'laz', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('LAZ export done.'); }catch{ setStatus('Export failed.') } }}>LAZ</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting glTF ...'); try{ await requestExport(sceneId, 'gltf', 'EPSG:4978'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('glTF export done.'); }catch{ setStatus('Export failed.') } }}>glTF</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting WebM ...'); try{ await requestExport(sceneId, 'webm', 'EPSG:3857'); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('WebM export done.'); }catch{ setStatus('Export failed.') } }}>WebM</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting LAZ ...'); try{ await requestExport(sceneId, 'laz', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('LAZ export done.'); }catch{ setStatus('Export failed.') } }}>LAZ</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting glTF ...'); try{ await requestExport(sceneId, 'gltf', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('glTF export done.'); }catch{ setStatus('Export failed.') } }}>glTF</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting WebM ...'); try{ await requestExport(sceneId, 'webm', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('WebM export done.'); }catch{ setStatus('Export failed.') } }}>WebM</button>
           <div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>Potree tiles open in a new tab.</div>
           <div style={{ marginTop: 6 }}>
             <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>
             <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_potree')}>Open latest Potree</button>
+            <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_laz')}>Open latest LAZ</button>
+            <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('report_html')}>Open latest Report</button>
           </div>
         </div>
       </div>
@@ -210,7 +239,13 @@ export const App: React.FC = () => {
         <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
         <div style={{ marginTop: 8 }}>
           <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
+          <label style={{ marginLeft: 8 }}><input type="checkbox" onChange={(e)=> setArtifactTypeFilter(e.target.checked ? 'export_' : '') } /> exports only</label>
         </div>
+        {metrics.length > 0 && (
+          <div style={{ marginTop: 8, color: '#444' }}>
+            <b>Metrics:</b> used_pdal={String(metrics.find(m=>m.name==='used_pdal')?.value || 0)}
+          </div>
+        )}
         {sceneList.length > 0 && (
           <div style={{ marginTop: 8 }}>
             <b>Recent scenes:</b>
@@ -218,10 +253,14 @@ export const App: React.FC = () => {
               {sceneList.map(s => (
                 <li key={s.id}>
                   <code>{s.id}</code> — {s.crs} — {new Date(s.created_at).toLocaleString()}
-                  <button style={{ marginLeft: 6 }} onClick={async()=>{ setSceneId(s.id); try { const sc = await getScene(s.id); setArtifacts(sc.artifacts) } catch {} }}>Open</button>
+                  <button style={{ marginLeft: 6 }} onClick={async()=>{ setSceneId(s.id); try { const sc = await getScene(s.id); setArtifacts(sc.artifacts); setMetrics(sc.metrics || []) } catch {} }}>Open</button>
                 </li>
               ))}
             </ul>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={()=> refreshScenes(Math.max(0, scenesOffset - scenesLimit))}>Prev</button>
+              <button onClick={()=> refreshScenes(scenesOffset + scenesLimit)}>Next</button>
+            </div>
           </div>
         )}
         <ul>

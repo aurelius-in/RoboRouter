@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_bucket_raw: str = "roborouter-raw"
     minio_bucket_processed: str = "roborouter-processed"
+    presign_expires_seconds: int = 3600
+
+    # CORS
+    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # Ingest (PDAL) defaults
     ingest_voxel_size_m: float = 0.05
