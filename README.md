@@ -82,6 +82,50 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 
 ---
 
+## 📈 Flow (Top‑Down)
+
+```mermaid
+graph TD
+  U[Web UI] -->|Run| A[Ingest]
+  A --> B[QA / Calibration]
+  B --> C[Registration<br/>(FGR/TEASER++ + ICP)]
+  C --> D[Segmentation<br/>(KPConv / CPU fallback)]
+  D --> E[Change Detection<br/>(voxel diff / learned option)]
+  E --> F[XAI & Report<br/>residuals, entropy, "why" sentences]
+  F --> G{OPA Policy Gate}
+  G -->|allowed| H[Exports<br/>Potree, LAZ, glTF, policy‑safe WebM]
+  G -->|blocked| X[Explain reason<br/>audit log + remediation]
+
+  %% Optional Autonomy Pack
+  D --> N[Autonomy Pack<br/>Occupancy/ESDF → A*/TEB → Guardian]
+  N --> G
+
+  %% Storage & Tracking
+  subgraph S[Storage & Tracking]
+    M[(MinIO S3)]
+    P[(Postgres + PostGIS)]
+    ML[(MLflow)]
+    DVC[DVC]
+  end
+
+  A --> M
+  C --> M
+  D --> M
+  E --> M
+  A --> P
+  C --> P
+  D --> P
+  E --> P
+  F --> ML
+  A -. pointers .-> DVC
+  E -. pointers .-> DVC
+
+  %% UI consumption
+  U -->|Overlays & Reports| H
+```
+
+---
+
 ## 🔍 Explainability
 RoboRouter was designed to be auditable by default:
 - **Residual Maps:** show registration errors in color.  
@@ -107,6 +151,78 @@ XAI + Policy Export + Navigation
 Potree / Web 3D Viewer + Report + API
 
 ````
+
+### Mermaid Architecture (Top‑Down)
+
+```mermaid
+graph TD
+  User[Operator] --> UI[React + Vite UI<br/>(Three.js / Potree)]
+  UI --> API[FastAPI / LangGraph Hooks]
+  API --> Orchestrator[LangGraph on Ray]
+
+  subgraph Agents
+    ING[Ingestor]
+    QA[QA / Calibration]
+    REG[Registration]
+    SEG[Segmentation]
+    CHG[Change Detection]
+    XAI[XAI / Provenance]
+    EXP[Policy / Export]
+    NAV[Navigation]
+    GRD[Guardian]
+  end
+
+  Orchestrator --> ING
+  Orchestrator --> QA
+  Orchestrator --> REG
+  Orchestrator --> SEG
+  Orchestrator --> CHG
+  Orchestrator --> XAI
+  Orchestrator --> EXP
+  Orchestrator -. optional .-> NAV
+  Orchestrator -. optional .-> GRD
+
+  subgraph Data Plane
+    MINIO[(MinIO S3)]
+    PG[(Postgres + PostGIS)]
+    REDIS[(Redis)]
+    MODELS[(Models / Checkpoints)]
+  end
+
+  ING --> MINIO
+  REG --> MINIO
+  SEG --> MINIO
+  CHG --> MINIO
+  XAI --> MINIO
+  API <-->|metadata| PG
+  ING --> PG
+  REG --> PG
+  SEG --> PG
+  CHG --> PG
+  XAI --> PG
+  EXP --> PG
+  SEG --> MODELS
+  Orchestrator --> REDIS
+
+  subgraph Policy & Observability
+    OPA[OPA Policies]
+    OTel[OpenTelemetry]
+    Prom[Prometheus]
+    GRAF[Grafana]
+  end
+
+  API --> OPA
+  EXP --> OPA
+  API --> OTel
+  Orchestrator --> OTel
+  Prom --> GRAF
+
+  subgraph GPU Node
+    API
+    Orchestrator
+    AgentsGroup[Agents (CUDA‑enabled)]
+  end
+```
 
 - **Backend:** Python 3.11, CUDA 12.x, PyTorch 2.x, Ray, LangGraph, FastAPI  
 - **3D Stack:** Open3D, PDAL, MinkowskiEngine, Kaolin, PyTorch3D  
