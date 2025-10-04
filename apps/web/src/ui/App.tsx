@@ -157,6 +157,12 @@ export const App: React.FC = () => {
       setArtifactUrl(info.url)
       setArtifactType(info.type)
       setArtifactExpiry(info.expires_in_seconds ?? null)
+      if (info.type === 'export_potree' || info.type === 'report_html') {
+        window.open(info.url, '_blank')
+        setArtifactPreview('')
+        setStatus(`Opened ${type} in new tab`)
+        return
+      }
       try {
         const resp = await fetch(info.url)
         const text = await resp.text()
@@ -398,6 +404,7 @@ export const App: React.FC = () => {
               &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
               &nbsp; seg={Number(metrics.find(m=>m.name==='segmentation_pass')?.value || 0) ? 'pass' : 'fail'}
               &nbsp; chg={Number(metrics.find(m=>m.name==='change_detection_pass')?.value || 0) ? 'pass' : 'fail'}
+              <button style={{ marginLeft: 8 }} onClick={async()=>{ if(!sceneId) return; try { setGates(await getGates(sceneId)); setStatus('Gates refreshed') } catch { setStatus('Gates refresh failed') } }}>Refresh Gates</button>
             </div>
             {gates && (
               <div style={{ marginTop: 6 }}>
