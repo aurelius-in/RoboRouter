@@ -31,6 +31,8 @@ export async function apiDelete<T>(path: string): Promise<T> {
   return r.json() as Promise<T>
 }
 
+export async function uploadFile(file: File): Promise<{ path: string }> { const fd = new FormData(); fd.append('file', file); const r = await fetch(`${API_BASE}/upload`, { method: 'POST', body: fd, headers: { ...(authHeaders()) as any } }); if (!r.ok) throw new Error('upload failed'); return r.json(); }
+
 export type Health = { status: string; gpu: { name: string }[] }
 export const getHealth = () => apiGet<Health>('/health')
 
