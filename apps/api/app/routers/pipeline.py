@@ -14,6 +14,7 @@ from ..pipeline.registration import register_clouds
 from ..pipeline.segmentation import run_segmentation
 from ..pipeline.change_detection import run_change_detection
 from ..storage.minio_client import get_minio_client, upload_file
+from ..orchestrator.stub import OrchestratorStub
 
 
 router = APIRouter()
@@ -24,11 +25,15 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
     steps = steps or ["registration"]
     db: Session = SessionLocal()
     try:
+        orch = OrchestratorStub()
+        with __import__('contextlib').ExitStack() as _:
+            # Record stub plan (no behavior change)
+            out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": orch.run(str(scene_id), steps)}
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
 
-        out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}}
+        # out already declared with orchestrator stub
 
         if "registration" in steps:
             ingest_art = db.execute(
