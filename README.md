@@ -54,6 +54,10 @@ Segmentation
 ------------
 Change Detection
 ----------------
+Navigation
+----------
+- GET `/nav/map/{scene_id}` returns occupancy/ESDF metadata and stores a map artifact.
+- POST `/nav/plan` with `{scene_id, start, goal, constraints}` returns a stub route, guardian decision (allowed/reasons), and a cost breakdown.
 - Run `/pipeline/run` with `steps=["change_detection"]` to produce a change mask and delta table with stub precision/recall/F1 metrics.
 - Run `/pipeline/run` with `steps=["segmentation"]` after ingest (or registration) to generate class, confidence, and entropy overlays and a stub mIoU metric.
 - POST `/ingest` with `{source_uri, crs, sensor_meta}` to ingest and QA a scan.
