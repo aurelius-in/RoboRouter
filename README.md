@@ -1,4 +1,6 @@
-# RoboRouter
+<p align="center">
+  <img src="robologo_trans.png" alt="RoboRouter" width="50%" />
+</p>
 
 Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves.
 
