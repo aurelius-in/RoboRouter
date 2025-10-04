@@ -139,6 +139,7 @@ export const App: React.FC = () => {
   const [artifactUrl, setArtifactUrl] = useState<string>('')
   const [artifactType, setArtifactType] = useState<string>('')
   const [artifactExpiry, setArtifactExpiry] = useState<number | null>(null)
+  const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null } | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
@@ -160,6 +161,7 @@ export const App: React.FC = () => {
       setArtifactUrl(info.url)
       setArtifactType(info.type)
       setArtifactExpiry(info.expires_in_seconds ?? null)
+      setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified })
       if (info.type === 'export_potree' || info.type === 'report_html') {
         window.open(info.url, '_blank')
         setArtifactPreview('')
@@ -181,6 +183,7 @@ export const App: React.FC = () => {
     setArtifactUrl(info.url)
     setArtifactType(info.type)
     setArtifactExpiry(info.expires_in_seconds ?? null)
+    setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified })
     try {
       const resp = await fetch(info.url)
       const text = await resp.text()
@@ -504,6 +507,19 @@ export const App: React.FC = () => {
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
         {selectedArtifactId && artifactExpiry !== null && (
           <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>expires in ~{artifactExpiry}s</div>
+        )}
+        {artifactMeta && (
+          <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
+            {typeof artifactMeta.size_bytes === 'number' && (
+              <span>size={(artifactMeta.size_bytes/1024).toFixed(1)} KB</span>
+            )}
+            {artifactMeta.content_type && (
+              <span> &nbsp; type={artifactMeta.content_type}</span>
+            )}
+            {artifactMeta.last_modified && (
+              <span> &nbsp; modified={new Date(artifactMeta.last_modified*1000).toLocaleString()}</span>
+            )}
+          </div>
         )}
         {selectedArtifactId && (
           <div style={{ marginTop: 4, color: '#666', fontSize: 12 }}>
