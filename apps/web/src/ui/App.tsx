@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -525,6 +525,7 @@ export const App: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+                <button style={{ marginTop: 6 }} onClick={async()=>{ try { const csv = await getArtifactCsv(selectedArtifactId); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `change_delta_${selectedArtifactId}.csv`; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('CSV download failed') } }}>Download CSV</button>
               )
             }
           } catch {}
