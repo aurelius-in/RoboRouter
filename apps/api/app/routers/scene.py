@@ -89,3 +89,24 @@ def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
     finally:
         db.close()
 
+
+@router.get("/scene/{scene_id}/artifacts")
+def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, type: Optional[str] = None, exports_only: bool = False) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        q = select(Artifact).where(Artifact.scene_id == scene_id)
+        if type:
+            q = q.where(Artifact.type == type)
+        if exports_only:
+            from sqlalchemy import literal
+            q = q.where(Artifact.type.like("export_%"))
+        q = q.order_by(Artifact.created_at.desc())
+        total = db.execute(select(func.count(Artifact.id)).select_from(q.subquery())).scalar_one()
+        rows = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
+        items = [
+            {"id": str(a.id), "type": a.type, "uri": a.uri, "created_at": a.created_at.isoformat()} for a in rows
+        ]
+        return {"items": items, "offset": offset, "limit": limit, "total": total}
+    finally:
+        db.close()
+

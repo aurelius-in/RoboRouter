@@ -85,5 +85,11 @@ export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; l
 export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
 export const getModels = () => apiGet<any>('/models')
 export const getGates = (sceneId: string) => apiGet<any>(`/gates?scene_id=${encodeURIComponent(sceneId)}`)
+export const listSceneArtifacts = (sceneId: string, offset: number, limit: number, opts?: { type?: string; exportsOnly?: boolean }) => {
+  const p = new URLSearchParams({ offset: String(offset), limit: String(limit) })
+  if (opts?.type) p.set('type', opts.type)
+  if (opts?.exportsOnly) p.set('exports_only', 'true')
+  return apiGet<{ items: { id: string; type: string; uri: string; created_at: string }[]; offset: number; limit: number; total: number }>(`/scene/${sceneId}/artifacts?${p.toString()}`)
+}
 
 
