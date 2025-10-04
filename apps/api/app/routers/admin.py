@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,10 @@ from ..db import SessionLocal
 from ..models import Artifact, Metric, AuditLog
 
 
-router = APIRouter()
+from ..deps import require_api_key
+
+
+router = APIRouter(dependencies=[Depends(require_api_key)])
 
 
 @router.post("/admin/cleanup")
@@ -27,5 +30,10 @@ def cleanup_old_records() -> Dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"deleted": {"artifacts": int(a), "metrics": int(m), "audit_logs": int(l)}, "cutoff": cutoff.isoformat()}
     finally:
         db.close()
+
+
+@router.delete("/admin/cleanup")
+def cleanup_old_records_delete() -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    return cleanup_old_records()
 
 
