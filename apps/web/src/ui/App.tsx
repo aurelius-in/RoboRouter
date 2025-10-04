@@ -373,6 +373,7 @@ export const App: React.FC = () => {
             <label>Type&nbsp;
               <select value={exportType} onChange={(e)=>setExportType(e.target.value)}>
                 <option value="potree">potree</option>
+                <option value="potree_zip">potree_zip</option>
                 <option value="laz">laz</option>
                 <option value="gltf">gltf</option>
                 <option value="webm">webm</option>
@@ -403,6 +404,7 @@ export const App: React.FC = () => {
             <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>
             <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_potree')}>Open latest Potree</button>
             <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_laz')}>Open latest LAZ</button>
+              <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_potree_zip')}>Open latest Potree ZIP</button>
             <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('report_html')}>Open latest Report</button>
           </div>
         </div>

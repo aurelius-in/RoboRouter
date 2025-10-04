@@ -68,6 +68,16 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 obj = f"{obj_prefix}/index.html"
                 upload_file(client, "roborouter-processed", obj, index_local, content_type="text/html; charset=utf-8")
                 uri = f"s3://roborouter-processed/{obj}"
+            elif type.lower() == "potree_zip":
+                out_dir = f"{td}/potree_{scene_id}"
+                export_potree(input_laz, out_dir)
+                # Create a zip archive of the directory
+                import shutil as _shutil
+                zip_base = f"{td}/potree_{scene_id}"
+                zip_path = _shutil.make_archive(zip_base, 'zip', out_dir)
+                obj = f"exports/potree/{scene_id}.zip"
+                upload_file(client, "roborouter-processed", obj, zip_path, content_type="application/zip")
+                uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "laz":
                 out_laz = f"{td}/{scene_id}.laz"
                 export_laz(input_laz, out_laz)
