@@ -58,3 +58,16 @@ def list_scenes(offset: int = 0, limit: int = 50) -> Dict[str, Any]:  # type: ig
         db.close()
 
 
+@router.delete("/scene/{scene_id}")
+def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        scene = db.get(Scene, scene_id)
+        if not scene:
+            raise HTTPException(status_code=404, detail="Scene not found")
+        db.delete(scene)
+        db.commit()
+        return {"deleted": str(scene_id)}
+    finally:
+        db.close()
+

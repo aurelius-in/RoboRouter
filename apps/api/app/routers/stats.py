@@ -10,7 +10,7 @@ from ..db import SessionLocal
 from ..models import Scene, Artifact, Metric
 
 
-router = APIRouter()
+router = APIRouter(tags=["Stats"])
 
 
 @router.get("/stats")

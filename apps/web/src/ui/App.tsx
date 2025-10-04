@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -40,11 +40,24 @@ export const App: React.FC = () => {
   const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
   const [scenesOffset, setScenesOffset] = useState<number>(0)
   const [scenesLimit, setScenesLimit] = useState<number>(50)
+  const [runs, setRuns] = useState<any[]>([])
+  const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(false)
+  const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(false)
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
       const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
       setSceneList((res.items ?? []) as any[])
       setScenesOffset(nextOffset)
+    } catch {}
+  }
+  async function refreshRuns() {
+    try {
+      const params = new URLSearchParams()
+      if (runsOnlyFailed) params.set('only_failed', 'true')
+      if (runsOnlyPassed) params.set('only_passed', 'true')
+      params.set('limit', '10')
+      const res = await apiGet<any>(`/runs?${params.toString()}`)
+      setRuns(res.items || [])
     } catch {}
   }
 
@@ -115,6 +128,7 @@ export const App: React.FC = () => {
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
+  const [exportType, setExportType] = useState<string>('potree')
 
   async function openLatestByType(type: string) {
     if (!sceneId) return
@@ -178,6 +192,8 @@ export const App: React.FC = () => {
         {health?.cfg && (
           <span style={{ marginLeft: 8, color: '#777' }}>retention={health.cfg.retention_days}d</span>
         )}
+        <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await authPing(); setStatus('Auth ok') } catch { setStatus('Auth failed') } }}>Auth</button>
+        <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const r = await adminCleanup(); setStatus(`Cleanup: ${JSON.stringify(r.deleted || {})}`) } catch { setStatus('Cleanup failed') } }}>Cleanup</button>
       </div>
       {showStats && stats && (
         <div style={{ marginBottom: 12, color: '#555' }}>
@@ -245,6 +261,14 @@ export const App: React.FC = () => {
         <div>
           <h3>Export</h3>
           <div style={{ marginBottom: 6 }}>
+            <label>Type&nbsp;
+              <select value={exportType} onChange={(e)=>setExportType(e.target.value)}>
+                <option value="potree">potree</option>
+                <option value="laz">laz</option>
+                <option value="gltf">gltf</option>
+                <option value="webm">webm</option>
+              </select>
+            </label>
             <label>CRS&nbsp;
               <select value={exportCrs} onChange={(e)=>setExportCrs(e.target.value)}>
                 <option value="EPSG:3857">EPSG:3857</option>
@@ -252,11 +276,19 @@ export const App: React.FC = () => {
                 <option value="EPSG:26915">EPSG:26915</option>
               </select>
             </label>
+            <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await policyCheck(exportType, exportCrs); setStatus(r.allowed ? 'Policy: allowed' : `Policy: blocked (${r.reason})`) } catch { setStatus('Policy check failed') } }}>Check policy</button>
           </div>
-          <button onClick={onExportPotree}>Potree</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting LAZ ...'); try{ await requestExport(sceneId, 'laz', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('LAZ export done.'); }catch{ setStatus('Export failed.') } }}>LAZ</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting glTF ...'); try{ await requestExport(sceneId, 'gltf', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('glTF export done.'); }catch{ setStatus('Export failed.') } }}>glTF</button>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus('Exporting WebM ...'); try{ await requestExport(sceneId, 'webm', exportCrs); const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus('WebM export done.'); }catch{ setStatus('Export failed.') } }}>WebM</button>
+          <button onClick={async()=>{ if(!sceneId) return; setStatus(`Exporting ${exportType} ...`);
+            try{
+              const resp = await requestExport(sceneId, exportType, exportCrs);
+              // If we got an artifact_id, fetch and open it inline
+              if (resp && resp.artifact_id) {
+                const info = await getArtifactUrl(resp.artifact_id)
+                setArtifactUrl(info.url); setArtifactType(info.type); setSelectedArtifactId(resp.artifact_id)
+              }
+              const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus(`${exportType} export done.`)
+            }catch{ setStatus('Export failed.') }
+          }}>Export</button>
           <div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>Potree tiles open in a new tab.</div>
           <div style={{ marginTop: 6 }}>
             <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>
@@ -271,6 +303,9 @@ export const App: React.FC = () => {
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
         <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
+        <button style={{ marginLeft: 8 }} onClick={refreshRuns}>List Runs</button>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
         <div style={{ marginTop: 8 }}>
           <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
           <label style={{ marginLeft: 8 }}><input type="checkbox" onChange={(e)=> setArtifactTypeFilter(e.target.checked ? 'export_' : '') } /> exports only</label>
@@ -282,6 +317,12 @@ export const App: React.FC = () => {
             &nbsp; reg_ms={String(metrics.find(m=>m.name==='registration_ms')?.value || 0)}
             &nbsp; seg_ms={String(metrics.find(m=>m.name==='segmentation_ms')?.value || 0)}
             &nbsp; chg_ms={String(metrics.find(m=>m.name==='change_detection_ms')?.value || 0)}
+            <div style={{ marginTop: 4 }}>
+              <b>Gates:</b>
+              &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
+              &nbsp; seg={Number(metrics.find(m=>m.name==='segmentation_pass')?.value || 0) ? 'pass' : 'fail'}
+              &nbsp; chg={Number(metrics.find(m=>m.name==='change_detection_pass')?.value || 0) ? 'pass' : 'fail'}
+            </div>
           </div>
         )}
         {sceneList.length > 0 && (
@@ -292,6 +333,7 @@ export const App: React.FC = () => {
                 <li key={s.id}>
                   <code>{s.id}</code> — {s.crs} — {new Date(s.created_at).toLocaleString()}
                   <button style={{ marginLeft: 6 }} onClick={async()=>{ setSceneId(s.id); try { const sc = await getScene(s.id); setArtifacts(sc.artifacts); setMetrics(sc.metrics || []) } catch {} }}>Open</button>
+                  <button style={{ marginLeft: 6, color: '#b00' }} onClick={async()=>{ try { await deleteScene(s.id); setStatus('Deleted'); refreshScenes() } catch { setStatus('Delete failed') } }}>Delete</button>
                 </li>
               ))}
             </ul>
@@ -312,6 +354,19 @@ export const App: React.FC = () => {
             </li>
           ))}
         </ul>
+        {runs.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <b>Recent runs:</b>
+            <ul>
+              {runs.map(r => {
+                const ok = r.overall_pass ? '✅' : '❌'
+                return (
+                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')}</li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
         {audit.length > 0 && (
           <div style={{ marginTop: 12 }}>
             <b>Audit:</b>

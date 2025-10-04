@@ -25,6 +25,12 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return r.json() as Promise<T>
 }
 
+export async function apiDelete<T>(path: string): Promise<T> {
+  const r = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers: { ...authHeaders() } })
+  if (!r.ok) throw new Error(`${path} failed`)
+  return r.json() as Promise<T>
+}
+
 export type Health = { status: string; gpu: { name: string }[] }
 export const getHealth = () => apiGet<Health>('/health')
 
@@ -49,5 +55,17 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
 export const getConfig = () => apiGet<any>('/config')
+export const policyCheck = (type: string, crs: string) => apiGet<{ allowed: boolean; reason: string }>(`/policy/check?type=${encodeURIComponent(type)}&crs=${encodeURIComponent(crs)}`)
+export const adminCleanup = () => apiPost<any>('/admin/cleanup')
+export const authPing = () => apiGet<any>('/auth/ping')
+export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; limit?: number }) => {
+  const p = new URLSearchParams()
+  if (opts?.only_failed) p.set('only_failed', 'true')
+  if (opts?.only_passed) p.set('only_passed', 'true')
+  if (opts?.limit) p.set('limit', String(opts.limit))
+  const qs = p.toString()
+  return apiGet<any>(`/runs${qs ? `?${qs}` : ''}`)
+}
+export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
 
 
