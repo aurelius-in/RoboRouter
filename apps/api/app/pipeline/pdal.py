@@ -4,7 +4,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 
 def has_pdal() -> bool:
@@ -27,5 +27,23 @@ def build_ingest_pipeline(input_path: str, output_path: str, *, voxel_size: floa
 def run_pipeline(pipeline: Dict) -> None:
     cmd = ["pdal", "pipeline", "--stdin"]
     subprocess.run(cmd, input=json.dumps(pipeline), text=True, check=True)
+
+
+def get_point_count(file_path: str) -> Optional[int]:
+    if not has_pdal():
+        return None
+    try:
+        result = subprocess.run(
+            ["pdal", "info", "--metadata", file_path], capture_output=True, text=True, check=True
+        )
+        meta = json.loads(result.stdout)
+        readers = meta.get("metadata", {}).get("readers.las") or meta.get("metadata", {}).get("readers.laz")
+        if isinstance(readers, dict):
+            count = readers.get("count")
+            if isinstance(count, int):
+                return count
+        return None
+    except Exception:
+        return None
 
 

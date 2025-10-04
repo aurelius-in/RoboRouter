@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, type SceneArtifact } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact } from '../api/client'
 
 type SceneSummary = { id: string }
 
@@ -49,6 +49,27 @@ export const App: React.FC = () => {
     } catch {}
   }
 
+  async function onExportPotree() {
+    if (!sceneId) return
+    setStatus('Requesting Potree export ...')
+    try {
+      await requestExport(sceneId, 'potree', 'EPSG:3857')
+      const sc = await getScene(sceneId)
+      setArtifacts(sc.artifacts)
+      const potree = [...sc.artifacts].reverse().find(a => a.type === 'export_potree')
+      if (potree) {
+        const info = await getArtifactUrl(potree.id)
+        setArtifactUrl(info.url)
+        setSelectedArtifactId(potree.id)
+        setStatus('Potree export ready.')
+      } else {
+        setStatus('Potree export requested; artifact not yet listed.')
+      }
+    } catch (e) {
+      setStatus('Export failed.')
+    }
+  }
+
   const [selectedArtifactId, setSelectedArtifactId] = useState<string>('')
   const [artifactUrl, setArtifactUrl] = useState<string>('')
   async function onFetchArtifact() {
@@ -89,6 +110,11 @@ export const App: React.FC = () => {
         <div>
           <h3>Report</h3>
           <button onClick={onGenerateReport}>Generate</button>
+        </div>
+
+        <div>
+          <h3>Export</h3>
+          <button onClick={onExportPotree}>Potree</button>
         </div>
       </div>
 

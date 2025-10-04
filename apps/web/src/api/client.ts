@@ -32,4 +32,7 @@ export type SceneArtifact = { id: string; type: string; uri: string; created_at:
 export type SceneDetail = { id: string; artifacts: SceneArtifact[] }
 export const getScene = (sceneId: string) => apiGet<SceneDetail>(`/scene/${sceneId}`)
 
+export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG:3857') =>
+  apiPost<any>(`/export?scene_id=${sceneId}&type=${type}&crs=${crs}`)
+
 
