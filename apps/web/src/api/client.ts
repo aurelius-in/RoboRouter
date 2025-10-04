@@ -49,5 +49,8 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
 export const getConfig = () => apiGet<any>('/config')
+export const policyCheck = (type: string, crs: string) => apiGet<{ allowed: boolean; reason: string }>(`/policy/check?type=${encodeURIComponent(type)}&crs=${encodeURIComponent(crs)}`)
+export const adminCleanup = () => apiPost<any>('/admin/cleanup')
+export const authPing = () => apiGet<any>('/auth/ping')
 
 

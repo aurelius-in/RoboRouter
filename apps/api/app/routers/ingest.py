@@ -14,6 +14,7 @@ from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_p
 from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.crs import validate_crs
+from ..utils.hash import sha256_file
 
 
 router = APIRouter(tags=["Ingest"])
@@ -88,6 +89,10 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         "density": density,
         "completeness": completeness,
     }
+    try:
+        metrics["ingested_sha256"] = float(int(sha256_file(output_path), 16) % 1e6)
+    except Exception:
+        pass
     metrics["used_pdal"] = 1.0 if used_pdal else 0.0
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))

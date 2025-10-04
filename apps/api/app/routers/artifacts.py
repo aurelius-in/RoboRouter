@@ -4,6 +4,7 @@ import uuid
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
+import time
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
@@ -26,11 +27,32 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
         client = get_minio_client()
         if art.uri.startswith("s3://"):
             bucket, key = parse_s3_uri(art.uri)
-            url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
+            # Simple in-process cache for presigned URLs
+            url = _get_cached_url(str(artifact_id))
+            if not url:
+                url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
+                _cache_url(str(artifact_id), url, settings.presign_expires_seconds)
         else:
             url = art.uri
         return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri}
     finally:
         db.close()
 
+
+_URL_CACHE: Dict[str, tuple[str, float]] = {}
+
+
+def _cache_url(artifact_id: str, url: str, ttl_s: int) -> None:
+    _URL_CACHE[artifact_id] = (url, time.time() + float(ttl_s) * 0.9)
+
+
+def _get_cached_url(artifact_id: str) -> str | None:
+    rec = _URL_CACHE.get(artifact_id)
+    if not rec:
+        return None
+    url, expires_at = rec
+    if time.time() >= expires_at:
+        _URL_CACHE.pop(artifact_id, None)
+        return None
+    return url
 
