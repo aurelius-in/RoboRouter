@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select, func
@@ -42,13 +42,17 @@ def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-de
 
 
 @router.get("/scenes")
-def list_scenes(offset: int = 0, limit: int = 50) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     """List recent scenes with basic metadata (paginated)."""
     db: Session = SessionLocal()
     try:
-        q = select(Scene).order_by(Scene.created_at.desc())
-        total = db.execute(select(func.count(Scene.id))).scalar_one()
-        scenes = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
+        base = select(Scene)
+        if q:
+            # Filter by source_uri substring (case-insensitive)
+            base = base.where(Scene.source_uri.ilike(f"%{q}%"))  # type: ignore[attr-defined]
+        base = base.order_by(Scene.created_at.desc())
+        total = db.execute(select(func.count(Scene.id)).select_from(base.subquery())).scalar_one()
+        scenes = db.execute(base.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
         items = [
             {"id": str(s.id), "source_uri": s.source_uri, "crs": s.crs, "created_at": s.created_at.isoformat()}
             for s in scenes

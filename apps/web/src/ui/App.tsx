@@ -48,9 +48,12 @@ export const App: React.FC = () => {
   const [runsOffset, setRunsOffset] = useState<number>(0)
   const [runsLimit, setRunsLimit] = useState<number>(10)
   const [runsTotal, setRunsTotal] = useState<number>(0)
+  const [sceneQuery, setSceneQuery] = useState<string>('')
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
-      const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
+      const qs = new URLSearchParams({ offset: String(nextOffset), limit: String(scenesLimit) })
+      if (sceneQuery) qs.set('q', sceneQuery)
+      const res = await apiGet<any>(`/scenes?${qs.toString()}`)
       setSceneList((res.items ?? []) as any[])
       if (typeof res.total === 'number') setScenesTotal(res.total)
       setScenesOffset(nextOffset)
@@ -384,7 +387,10 @@ export const App: React.FC = () => {
       <div style={{ marginTop: 16 }}>
         <h3>Artifacts</h3>
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
-        <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
+        <span style={{ marginLeft: 8 }}>
+          <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>setSceneQuery(e.target.value)} />
+          <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
+        </span>
         <button style={{ marginLeft: 8 }} onClick={()=>refreshRuns(0)}>List Runs</button>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
