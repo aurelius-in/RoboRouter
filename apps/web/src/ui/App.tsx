@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, type SceneArtifact } from '../api/client'
 
 type SceneSummary = { id: string }
 
@@ -15,33 +16,45 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [sceneId, setSceneId] = useState<string>('')
   const [status, setStatus] = useState<string>('')
+  const [artifacts, setArtifacts] = useState<SceneArtifact[]>([])
 
   useEffect(() => {
-    checkHealth()
+    getHealth()
       .then(setHealth)
       .finally(() => setLoading(false))
   }, [])
 
   const gpu = useMemo(() => (health?.gpu ?? [] as any[]).map((g: any) => g.name).join(', '), [health])
 
-  async function runPipeline() {
+  async function onRunPipeline() {
     if (!sceneId) return
     setStatus('Running registration → segmentation → change ...')
-    await fetch(`${apiBase}/pipeline/run?scene_id=${sceneId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ steps: ['registration', 'segmentation', 'change_detection'], config_overrides: {} })
-    })
+    await runPipeline(sceneId, ['registration', 'segmentation', 'change_detection'])
     setStatus('Done.')
+    try {
+      const sc = await getScene(sceneId)
+      setArtifacts(sc.artifacts)
+    } catch {}
   }
 
-  async function downloadReport() {
+  async function onGenerateReport() {
     if (!sceneId) return
     setStatus('Generating report ...')
-    const r = await fetch(`${apiBase}/report/generate?scene_id=${sceneId}`, { method: 'POST' })
-    const body = await r.json()
+    const body = await generateReport(sceneId)
     setStatus('Report requested.')
     console.log('Report:', body)
+    try {
+      const sc = await getScene(sceneId)
+      setArtifacts(sc.artifacts)
+    } catch {}
+  }
+
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string>('')
+  const [artifactUrl, setArtifactUrl] = useState<string>('')
+  async function onFetchArtifact() {
+    if (!selectedArtifactId) return
+    const info = await getArtifactUrl(selectedArtifactId)
+    setArtifactUrl(info.url)
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading...</div>
@@ -61,7 +74,7 @@ export const App: React.FC = () => {
 
         <div>
           <h3>Pipeline</h3>
-          <button onClick={runPipeline}>Run</button>
+          <button onClick={onRunPipeline}>Run</button>
         </div>
 
         <div>
@@ -75,8 +88,31 @@ export const App: React.FC = () => {
 
         <div>
           <h3>Report</h3>
-          <button onClick={downloadReport}>Generate</button>
+          <button onClick={onGenerateReport}>Generate</button>
         </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <h3>Artifacts</h3>
+        {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
+        <ul>
+          {artifacts.map(a => (
+            <li key={a.id}>
+              <code>{a.id}</code> — {a.type} — {new Date(a.created_at).toLocaleString()}
+              <button style={{ marginLeft: 8 }} onClick={()=>{ setSelectedArtifactId(a.id) }}>Select</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div style={{ marginTop: 24 }}>
+        <h3>Viewer (placeholder)</h3>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
+          <button onClick={onFetchArtifact}>Fetch URL</button>
+          {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
+        </div>
+        {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
       </div>
 
       <div style={{ marginTop: 16, color: '#555' }}>{status}</div>

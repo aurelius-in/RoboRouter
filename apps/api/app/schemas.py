@@ -36,3 +36,34 @@ class NavigationPlanResponse(BaseModel):
     costs: Dict[str, float]
 
 
+class ArtifactDTO(BaseModel):
+    id: uuid.UUID
+    type: str
+    uri: str
+    created_at: str
+
+
+class MetricDTO(BaseModel):
+    name: str
+    value: float
+    created_at: str
+
+
+class AuditDTO(BaseModel):
+    id: uuid.UUID
+    action: str
+    details: Dict[str, Any] | None = None
+    created_at: str
+
+
+class SceneDetail(BaseModel):
+    id: uuid.UUID
+    source_uri: str
+    crs: str
+    sensor_meta: Dict[str, Any] | None = None
+    created_at: str
+    metrics: list[MetricDTO]
+    artifacts: list[ArtifactDTO]
+    audit: list[AuditDTO]
+
+

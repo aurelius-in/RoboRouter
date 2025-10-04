@@ -12,6 +12,7 @@ from .routers.artifacts import router as artifacts_router
 from .routers.report import router as report_router
 from .routers.export import router as export_router
 from .routers.navigation import router as navigation_router
+from .routers.scene import router as scene_router
 from .observability import setup_metrics
 from .otel import setup_otel
 
@@ -57,6 +58,7 @@ app.include_router(artifacts_router)
 app.include_router(report_router)
 app.include_router(export_router)
 app.include_router(navigation_router)
+app.include_router(scene_router)
 
 # Observability
 setup_metrics(app)
