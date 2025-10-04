@@ -1,0 +1,14 @@
+profiles:
+  AEC:
+    crs: EPSG:3857
+    z_units: meters
+    rounding_mm: 5
+  Utilities:
+    crs: EPSG:26915
+    z_units: meters
+    rounding_mm: 10
+  Manufacturing:
+    crs: EPSG:4978
+    z_units: meters
+    rounding_mm: 1
+

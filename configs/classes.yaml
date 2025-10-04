@@ -1,0 +1,17 @@
+classes:
+  - id: 0
+    name: unknown
+    color: [128, 128, 128]
+  - id: 1
+    name: ground
+    color: [120, 80, 60]
+  - id: 2
+    name: building
+    color: [200, 50, 50]
+  - id: 3
+    name: vegetation
+    color: [50, 160, 60]
+  - id: 4
+    name: vehicle
+    color: [50, 100, 200]
+
