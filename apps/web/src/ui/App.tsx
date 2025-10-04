@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -142,6 +142,10 @@ export const App: React.FC = () => {
   const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null; etag?: string | null } | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
+  const [artifactsOffset, setArtifactsOffset] = useState<number>(0)
+  const [artifactsLimit, setArtifactsLimit] = useState<number>(20)
+  const [artifactsTotal, setArtifactsTotal] = useState<number>(0)
+  const [exportsOnly, setExportsOnly] = useState<boolean>(false)
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
   const allowedCrsOptions = (health?.cfg?.allowed_crs) || ['EPSG:3857', 'EPSG:4978', 'EPSG:26915']
   const [exportType, setExportType] = useState<string>('potree')
@@ -193,6 +197,16 @@ export const App: React.FC = () => {
     } catch {
       setArtifactPreview('')
     }
+  }
+
+  async function refreshArtifacts(nextOffset: number = artifactsOffset) {
+    if (!sceneId) return
+    try {
+      const res = await listSceneArtifacts(sceneId, nextOffset, artifactsLimit, { type: artifactTypeFilter || undefined, exportsOnly })
+      setArtifacts((res.items ?? []) as any[])
+      setArtifactsOffset(nextOffset)
+      if (typeof res.total === 'number') setArtifactsTotal(res.total)
+    } catch {}
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading...</div>
@@ -401,7 +415,7 @@ export const App: React.FC = () => {
 
       <div style={{ marginTop: 16 }}>
         <h3>Artifacts</h3>
-        {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
+        {sceneId && <button onClick={()=>refreshArtifacts(0)}>Refresh</button>}
         <span style={{ marginLeft: 8 }}>
           <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>setSceneQuery(e.target.value)} />
           <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
@@ -411,7 +425,8 @@ export const App: React.FC = () => {
         <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
         <div style={{ marginTop: 8 }}>
           <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
-          <label style={{ marginLeft: 8 }}><input type="checkbox" onChange={(e)=> setArtifactTypeFilter(e.target.checked ? 'export_' : '') } /> exports only</label>
+          <label style={{ marginLeft: 8 }}><input type="checkbox" checked={exportsOnly} onChange={(e)=> setExportsOnly(e.target.checked) } /> exports only</label>
+          <button style={{ marginLeft: 8 }} onClick={()=>refreshArtifacts(0)}>Apply</button>
         </div>
         {metrics.length > 0 && (
           <div style={{ marginTop: 8, color: '#444' }}>
@@ -456,8 +471,11 @@ export const App: React.FC = () => {
             </div>
           </div>
         )}
+        <div style={{ marginTop: 8 }}>
+          <b>Artifacts ({artifactsOffset}-{Math.min(artifactsOffset + artifactsLimit, artifactsTotal)} of {artifactsTotal || '…'}):</b>
+        </div>
         <ul>
-          {artifacts.filter(a => !artifactTypeFilter || a.type.includes(artifactTypeFilter)).map(a => (
+          {artifacts.map(a => (
             <li key={a.id}>
               <code>{a.id}</code> — {a.type} — {new Date(a.created_at).toLocaleString()}
               <button style={{ marginLeft: 8 }} onClick={()=>{ setSelectedArtifactId(a.id) }}>Select</button>
@@ -467,6 +485,10 @@ export const App: React.FC = () => {
             </li>
           ))}
         </ul>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={()=> refreshArtifacts(Math.max(0, artifactsOffset - artifactsLimit))} disabled={artifactsOffset === 0}>Prev</button>
+          <button onClick={()=> refreshArtifacts(artifactsOffset + artifactsLimit)} disabled={artifactsOffset + artifactsLimit >= artifactsTotal}>Next</button>
+        </div>
         {runs.length > 0 && (
           <div style={{ marginTop: 12 }}>
             <b>Recent runs ({runsOffset}-{Math.min(runsOffset + runsLimit, runsTotal)} of {runsTotal || '…'}):</b>

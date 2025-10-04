@@ -66,25 +66,25 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 obj_prefix = f"exports/potree/{scene_id}"
                 index_local = f"{out_dir}/index.html"
                 obj = f"{obj_prefix}/index.html"
-                upload_file(client, "roborouter-processed", obj, index_local)
+                upload_file(client, "roborouter-processed", obj, index_local, content_type="text/html; charset=utf-8")
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "laz":
                 out_laz = f"{td}/{scene_id}.laz"
                 export_laz(input_laz, out_laz)
                 obj = f"exports/laz/{scene_id}.laz"
-                upload_file(client, "roborouter-processed", obj, out_laz)
+                upload_file(client, "roborouter-processed", obj, out_laz, content_type="application/octet-stream")
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "gltf":
                 out_gltf = f"{td}/{scene_id}.gltf"
                 export_gltf(input_laz, out_gltf)
                 obj = f"exports/gltf/{scene_id}.gltf"
-                upload_file(client, "roborouter-processed", obj, out_gltf)
+                upload_file(client, "roborouter-processed", obj, out_gltf, content_type="model/gltf+json")
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "webm":
                 out_webm = f"{td}/{scene_id}.webm"
                 export_webm(input_laz, out_webm)
                 obj = f"exports/webm/{scene_id}.webm"
-                upload_file(client, "roborouter-processed", obj, out_webm)
+                upload_file(client, "roborouter-processed", obj, out_webm, content_type="video/webm")
                 uri = f"s3://roborouter-processed/{obj}"
             else:
                 raise HTTPException(status_code=400, detail="Unsupported export type")
