@@ -8,6 +8,7 @@ from typing import Dict
 import numpy as np
 
 from ..utils.math import binary_entropy
+from ..utils.tracing import span
 
 
 logger = logging.getLogger(__name__)
@@ -21,14 +22,15 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float]:
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
-    # Pretend we made predictions for N points
-    num_points = 1000
-    num_classes = 5
-    logits = np.random.randn(num_points, num_classes)
-    probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
-    classes = np.argmax(probs, axis=1)
-    confidence = np.max(probs, axis=1)
-    entropy = np.mean(binary_entropy(confidence))  # approximate entropy from top-class prob
+    with span("segmentation.stub"):
+        # Pretend we made predictions for N points
+        num_points = 1000
+        num_classes = 5
+        logits = np.random.randn(num_points, num_classes)
+        probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+        classes = np.argmax(probs, axis=1)
+        confidence = np.max(probs, axis=1)
+        entropy = np.mean(binary_entropy(confidence))  # approximate entropy from top-class prob
 
     # Summaries only (keep files tiny)
     class_counts = {int(c): int((classes == c).sum()) for c in range(num_classes)}
