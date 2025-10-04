@@ -16,7 +16,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.crs import validate_crs
 
 
-router = APIRouter()
+router = APIRouter(tags=["Ingest"])
 
 
 @router.on_event("startup")

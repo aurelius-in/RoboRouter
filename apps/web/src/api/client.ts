@@ -1,7 +1,16 @@
 export const API_BASE = (import.meta as any).env?.VITE_API_BASE || 'http://localhost:8000'
 
+function authHeaders(): Record<string, string> {
+  try {
+    const k = (globalThis as any).localStorage?.getItem('api_key')
+    return k ? { 'X-API-Key': k } : {}
+  } catch {
+    return {}
+  }
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`)
+  const r = await fetch(`${API_BASE}${path}`, { headers: { ...authHeaders() } })
   if (!r.ok) throw new Error(`${path} failed`)
   return r.json() as Promise<T>
 }
@@ -9,7 +18,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!r.ok) throw new Error(`${path} failed`)
@@ -30,7 +39,8 @@ export const getArtifactUrl = (artifactId: string) => apiGet<ArtifactUrl>(`/arti
 
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
 export type SceneMetric = { name: string; value: number; created_at: string }
-export type SceneDetail = { id: string; artifacts: SceneArtifact[]; metrics?: SceneMetric[] }
+export type SceneAudit = { id: string; action: string; details?: Record<string, any> | null; created_at: string }
+export type SceneDetail = { id: string; artifacts: SceneArtifact[]; metrics?: SceneMetric[]; audit?: SceneAudit[] }
 export const getScene = (sceneId: string) => apiGet<SceneDetail>(`/scene/${sceneId}`)
 
 export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG:3857') =>

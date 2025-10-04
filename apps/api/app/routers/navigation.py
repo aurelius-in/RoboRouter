@@ -16,7 +16,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.tracing import span
 
 
-router = APIRouter()
+router = APIRouter(tags=["Navigation"])
 
 
 @router.get("/nav/map/{scene_id}", response_model=NavigationMapResponse)

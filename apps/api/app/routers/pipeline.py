@@ -21,7 +21,7 @@ from ..mlflow_stub import log_metrics as mlflow_log_metrics
 from ..orchestrator.stub import OrchestratorStub
 
 
-router = APIRouter()
+router = APIRouter(tags=["Pipeline"])
 
 
 @router.post("/pipeline/run")

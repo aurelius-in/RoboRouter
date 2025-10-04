@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   const [status, setStatus] = useState<string>('')
   const [artifacts, setArtifacts] = useState<SceneArtifact[]>([])
   const [metrics, setMetrics] = useState<{ name: string; value: number; created_at: string }[]>([])
+  const [audit, setAudit] = useState<{ id: string; action: string; details?: any; created_at: string }[]>([])
   const [orchestratorPlan, setOrchestratorPlan] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [showStats, setShowStats] = useState<boolean>(false)
@@ -67,6 +68,7 @@ export const App: React.FC = () => {
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
       setMetrics(sc.metrics || [])
+      setAudit(sc.audit || [])
     } catch {}
   }
 
@@ -80,6 +82,7 @@ export const App: React.FC = () => {
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
       setMetrics(sc.metrics || [])
+      setAudit(sc.audit || [])
     } catch {}
   }
 
@@ -184,6 +187,9 @@ export const App: React.FC = () => {
           <h3>Dataset / Scene</h3>
           <input placeholder="scene_id" value={sceneId} onChange={(e) => setSceneId(e.target.value)} />
           <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await navigator.clipboard.writeText(sceneId); setStatus('Scene ID copied') } catch { setStatus('Copy failed') } }}>Copy</button>
+          <div style={{ marginTop: 6 }}>
+            <input placeholder="api key (optional)" onChange={(e)=>{ try { localStorage.setItem('api_key', e.target.value) } catch {} }} />
+          </div>
         </div>
 
         <div>
@@ -268,7 +274,11 @@ export const App: React.FC = () => {
         </div>
         {metrics.length > 0 && (
           <div style={{ marginTop: 8, color: '#444' }}>
-            <b>Metrics:</b> used_pdal={String(metrics.find(m=>m.name==='used_pdal')?.value || 0)}
+            <b>Metrics:</b>
+            &nbsp; used_pdal={String(metrics.find(m=>m.name==='used_pdal')?.value || 0)}
+            &nbsp; reg_ms={String(metrics.find(m=>m.name==='registration_ms')?.value || 0)}
+            &nbsp; seg_ms={String(metrics.find(m=>m.name==='segmentation_ms')?.value || 0)}
+            &nbsp; chg_ms={String(metrics.find(m=>m.name==='change_detection_ms')?.value || 0)}
           </div>
         )}
         {sceneList.length > 0 && (
@@ -299,6 +309,16 @@ export const App: React.FC = () => {
             </li>
           ))}
         </ul>
+        {audit.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <b>Audit:</b>
+            <ul>
+              {audit.slice(-5).reverse().map(a => (
+                <li key={a.id}><code>{a.action}</code> — {new Date(a.created_at).toLocaleString()}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 24 }}>

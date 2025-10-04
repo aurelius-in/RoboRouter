@@ -17,7 +17,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.sign import sign_dict
 
 
-router = APIRouter()
+router = APIRouter(tags=["Export"])
 
 
 @router.post("/export")

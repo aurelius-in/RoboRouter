@@ -19,6 +19,7 @@ from .observability import setup_metrics
 from .otel import setup_otel
 from .routers.stats import router as stats_router
 from .routers.admin import router as admin_router
+from .routers.config import router as config_router
 
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
@@ -140,6 +141,7 @@ app.include_router(navigation_router)
 app.include_router(scene_router)
 app.include_router(stats_router)
 app.include_router(admin_router)
+app.include_router(config_router)
 
 # Observability
 setup_metrics(app)
