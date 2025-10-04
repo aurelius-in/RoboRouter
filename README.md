@@ -86,26 +86,26 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 
 ```mermaid
 graph TD
-  U[Web UI] -->|Run| A[Ingest]
-  A --> B[QA / Calibration]
-  B --> C[Registration<br/>(FGR/TEASER++ + ICP)]
-  C --> D[Segmentation<br/>(KPConv / CPU fallback)]
-  D --> E[Change Detection<br/>(voxel diff / learned option)]
-  E --> F[XAI & Report<br/>residuals, entropy, "why" sentences]
-  F --> G{OPA Policy Gate}
-  G -->|allowed| H[Exports<br/>Potree, LAZ, glTF, policy‑safe WebM]
-  G -->|blocked| X[Explain reason<br/>audit log + remediation]
+  U["Web UI"] -->|Run| A["Ingest"]
+  A --> B["QA / Calibration"]
+  B --> C["Registration\n(FGR/TEASER++ + ICP)"]
+  C --> D["Segmentation\n(KPConv / CPU fallback)"]
+  D --> E["Change Detection\n(voxel diff / learned option)"]
+  E --> F["XAI & Report\nresiduals, entropy, \"why\" sentences"]
+  F --> G{"OPA Policy Gate"}
+  G -->|allowed| H["Exports\nPotree, LAZ, glTF, policy-safe WebM"]
+  G -->|blocked| X["Explain reason\naudit log + remediation"]
 
   %% Optional Autonomy Pack
-  D --> N[Autonomy Pack<br/>Occupancy/ESDF → A*/TEB → Guardian]
+  D --> N["Autonomy Pack\nOccupancy/ESDF -> A*/TEB -> Guardian"]
   N --> G
 
   %% Storage & Tracking
-  subgraph S[Storage & Tracking]
-    M[(MinIO S3)]
-    P[(Postgres + PostGIS)]
-    ML[(MLflow)]
-    DVC[DVC]
+  subgraph S["Storage & Tracking"]
+    M["MinIO S3"]
+    P["Postgres + PostGIS"]
+    ML["MLflow"]
+    DVC["DVC"]
   end
 
   A --> M
@@ -156,20 +156,20 @@ Potree / Web 3D Viewer + Report + API
 
 ```mermaid
 graph TD
-  User[Operator] --> UI[React + Vite UI<br/>(Three.js / Potree)]
-  UI --> API[FastAPI / LangGraph Hooks]
-  API --> Orchestrator[LangGraph on Ray]
+  User["Operator"] --> UI["React + Vite UI\n(Three.js / Potree)"]
+  UI --> API["FastAPI / LangGraph Hooks"]
+  API --> Orchestrator["LangGraph on Ray"]
 
   subgraph Agents
-    ING[Ingestor]
-    QA[QA / Calibration]
-    REG[Registration]
-    SEG[Segmentation]
-    CHG[Change Detection]
-    XAI[XAI / Provenance]
-    EXP[Policy / Export]
-    NAV[Navigation]
-    GRD[Guardian]
+    ING["Ingestor"]
+    QA["QA / Calibration"]
+    REG["Registration"]
+    SEG["Segmentation"]
+    CHG["Change Detection"]
+    XAI["XAI / Provenance"]
+    EXP["Policy / Export"]
+    NAV["Navigation"]
+    GRD["Guardian"]
   end
 
   Orchestrator --> ING
@@ -183,10 +183,10 @@ graph TD
   Orchestrator -. optional .-> GRD
 
   subgraph Data Plane
-    MINIO[(MinIO S3)]
-    PG[(Postgres + PostGIS)]
-    REDIS[(Redis)]
-    MODELS[(Models / Checkpoints)]
+    MINIO[("MinIO S3")]
+    PG[("Postgres + PostGIS")]
+    REDIS[("Redis")]
+    MODELS[("Models / Checkpoints")]
   end
 
   ING --> MINIO
@@ -205,10 +205,10 @@ graph TD
   Orchestrator --> REDIS
 
   subgraph Policy & Observability
-    OPA[OPA Policies]
-    OTel[OpenTelemetry]
-    Prom[Prometheus]
-    GRAF[Grafana]
+    OPA["OPA Policies"]
+    OTel["OpenTelemetry"]
+    Prom["Prometheus"]
+    GRAF["Grafana"]
   end
 
   API --> OPA
@@ -220,7 +220,7 @@ graph TD
   subgraph GPU Node
     API
     Orchestrator
-    AgentsGroup[Agents (CUDA‑enabled)]
+    AgentsGroup["Agents (CUDA-enabled)"]
   end
 ```
 
