@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet } from '../api/client'
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'model-viewer': any
+    }
+  }
+}
+
 type SceneSummary = { id: string }
 
 const apiBase = 'http://localhost:8000'
@@ -65,6 +73,7 @@ export const App: React.FC = () => {
       if (potree) {
         const info = await getArtifactUrl(potree.id)
         setArtifactUrl(info.url)
+        setArtifactType(info.type)
         setSelectedArtifactId(potree.id)
         setStatus('Potree export ready.')
       } else {
@@ -77,6 +86,7 @@ export const App: React.FC = () => {
 
   const [selectedArtifactId, setSelectedArtifactId] = useState<string>('')
   const [artifactUrl, setArtifactUrl] = useState<string>('')
+  const [artifactType, setArtifactType] = useState<string>('')
   const [artifactPreview, setArtifactPreview] = useState<string>('')
 
   async function openLatestByType(type: string) {
@@ -92,6 +102,7 @@ export const App: React.FC = () => {
       setSelectedArtifactId(found.id)
       const info = await getArtifactUrl(found.id)
       setArtifactUrl(info.url)
+      setArtifactType(info.type)
       try {
         const resp = await fetch(info.url)
         const text = await resp.text()
@@ -105,6 +116,7 @@ export const App: React.FC = () => {
     if (!selectedArtifactId) return
     const info = await getArtifactUrl(selectedArtifactId)
     setArtifactUrl(info.url)
+    setArtifactType(info.type)
     try {
       const resp = await fetch(info.url)
       const text = await resp.text()
@@ -224,6 +236,11 @@ export const App: React.FC = () => {
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
         {artifactPreview && (
           <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 6 }}>{artifactPreview}</pre>
+        )}
+        {artifactUrl && artifactType === 'export_gltf' && (
+          <div style={{ marginTop: 12 }}>
+            <model-viewer src={artifactUrl} camera-controls style={{ width: '100%', height: 400, background: '#111' }}></model-viewer>
+          </div>
         )}
       </div>
 
