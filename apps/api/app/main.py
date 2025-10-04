@@ -6,6 +6,8 @@ from typing import Any, Dict, List
 
 from fastapi import FastAPI
 
+from .routers.ingest import router as ingest_router
+
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
 
@@ -39,5 +41,8 @@ def health() -> Dict[str, Any]:
             "ROBOROUTER_PROFILE": os.getenv("ROBOROUTER_PROFILE", "default"),
         },
     }
+
+
+app.include_router(ingest_router)
 
 

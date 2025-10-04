@@ -18,6 +18,11 @@ Prereqs: Docker with NVIDIA runtime. Then:
 3. Smoke test:
    - `python -m scripts.smoke_run`
 
+Ingest
+------
+- POST `/ingest` with `{source_uri, crs, sensor_meta}` to ingest and QA a scan.
+- For now, if PDAL is not installed in the API image, the pipeline stubs out and creates an empty output artifact to exercise the flow end-to-end.
+
 *RoboRouter turns raw 3D point clouds into explainable maps, metrics, and safe routes—bridging perception and autonomy through agentic AI.*
 
 

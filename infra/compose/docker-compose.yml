@@ -65,6 +65,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    volumes:
+      - minio-data:/data
 
   postgres:
     image: postgres:16
@@ -79,6 +81,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    volumes:
+      - pg-data:/var/lib/postgresql/data
 
   web:
     image: node:20-alpine
@@ -99,4 +103,7 @@ services:
 networks:
   default:
     name: roborouter
+volumes:
+  minio-data:
+  pg-data:
 
