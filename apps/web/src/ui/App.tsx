@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -157,6 +157,12 @@ export const App: React.FC = () => {
       setArtifactUrl(info.url)
       setArtifactType(info.type)
       setArtifactExpiry(info.expires_in_seconds ?? null)
+      if (info.type === 'export_potree' || info.type === 'report_html') {
+        window.open(info.url, '_blank')
+        setArtifactPreview('')
+        setStatus(`Opened ${type} in new tab`)
+        return
+      }
       try {
         const resp = await fetch(info.url)
         const text = await resp.text()
@@ -398,6 +404,7 @@ export const App: React.FC = () => {
               &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
               &nbsp; seg={Number(metrics.find(m=>m.name==='segmentation_pass')?.value || 0) ? 'pass' : 'fail'}
               &nbsp; chg={Number(metrics.find(m=>m.name==='change_detection_pass')?.value || 0) ? 'pass' : 'fail'}
+              <button style={{ marginLeft: 8 }} onClick={async()=>{ if(!sceneId) return; try { setGates(await getGates(sceneId)); setStatus('Gates refreshed') } catch { setStatus('Gates refresh failed') } }}>Refresh Gates</button>
             </div>
             {gates && (
               <div style={{ marginTop: 6 }}>
@@ -472,6 +479,7 @@ export const App: React.FC = () => {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>
+          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
@@ -517,6 +525,7 @@ export const App: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+                <button style={{ marginTop: 6 }} onClick={async()=>{ try { const csv = await getArtifactCsv(selectedArtifactId); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `change_delta_${selectedArtifactId}.csv`; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('CSV download failed') } }}>Download CSV</button>
               )
             }
           } catch {}

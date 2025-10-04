@@ -4,6 +4,7 @@ import uuid
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 import time
 from sqlalchemy.orm import Session
 
@@ -81,6 +82,42 @@ def get_latest_artifact(scene_id: uuid.UUID, type: str) -> Dict[str, Any]:  # ty
             raise HTTPException(status_code=404, detail="Artifact not found")
         # Reuse existing handler
         return get_artifact_url(row.id)
+    finally:
+        db.close()
+
+
+@router.post("/artifacts/refresh/{artifact_id}")
+def refresh_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """Invalidate local presign cache and return a fresh URL."""
+    _URL_CACHE.pop(str(artifact_id), None)
+    return get_artifact_url(artifact_id)
+
+
+@router.get("/artifacts/{artifact_id}/csv", response_class=PlainTextResponse)
+def artifact_as_csv(artifact_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
+    """For change_delta artifacts containing a JSON object, return CSV of key,count."""
+    db: Session = SessionLocal()
+    try:
+        art = db.get(Artifact, artifact_id)
+        if not art:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        if art.type != "change_delta":
+            raise HTTPException(status_code=400, detail="CSV view only supported for change_delta")
+        # Fetch JSON over presigned URL
+        info = get_artifact_url(artifact_id)
+        import json, urllib.request
+        with urllib.request.urlopen(info["url"]) as resp:  # type: ignore
+            text = resp.read().decode("utf-8")
+        try:
+            data = json.loads(text)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Artifact is not valid JSON")
+        if not isinstance(data, dict):
+            raise HTTPException(status_code=400, detail="Unexpected JSON format")
+        rows = ["type,count"]
+        for k, v in data.items():
+            rows.append(f"{k},{v}")
+        return "\n".join(rows) + "\n"
     finally:
         db.close()
 
