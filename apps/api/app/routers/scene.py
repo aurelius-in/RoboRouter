@@ -46,7 +46,7 @@ def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-de
 
 
 @router.get("/scenes")
-def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None, sort_by: Optional[str] = None, order: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     """List recent scenes with basic metadata (paginated)."""
     db: Session = SessionLocal()
     try:
@@ -54,7 +54,14 @@ def list_scenes(offset: int = 0, limit: int = 50, q: Optional[str] = None) -> Di
         if q:
             # Filter by source_uri substring (case-insensitive)
             base = base.where(Scene.source_uri.ilike(f"%{q}%"))  # type: ignore[attr-defined]
-        base = base.order_by(Scene.created_at.desc())
+        # Sorting
+        sort_col = Scene.created_at
+        if (sort_by or "").lower() == "source_uri":
+            sort_col = Scene.source_uri
+        elif (sort_by or "").lower() == "crs":
+            sort_col = Scene.crs
+        is_asc = (order or "desc").lower() == "asc"
+        base = base.order_by(sort_col.asc() if is_asc else sort_col.desc())
         total = db.execute(select(func.count(Scene.id)).select_from(base.subquery())).scalar_one()
         scenes = db.execute(base.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
         items = [
@@ -124,7 +131,7 @@ def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
 
 
 @router.get("/scene/{scene_id}/artifacts")
-def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, type: Optional[str] = None, exports_only: bool = False) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, type: Optional[str] = None, exports_only: bool = False, sort_by: Optional[str] = None, order: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
         q = select(Artifact).where(Artifact.scene_id == scene_id)
@@ -133,7 +140,11 @@ def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, 
         if exports_only:
             from sqlalchemy import literal
             q = q.where(Artifact.type.like("export_%"))
-        q = q.order_by(Artifact.created_at.desc())
+        sort_col = Artifact.created_at
+        if (sort_by or "").lower() == "type":
+            sort_col = Artifact.type
+        is_asc = (order or "desc").lower() == "asc"
+        q = q.order_by(sort_col.asc() if is_asc else sort_col.desc())
         total = db.execute(select(func.count(Artifact.id)).select_from(q.subquery())).scalar_one()
         rows = db.execute(q.offset(max(0, offset)).limit(min(200, max(1, limit)))).scalars().all()
         items = [
