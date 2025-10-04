@@ -51,6 +51,8 @@ export const refreshArtifact = (artifactId: string) => apiPost<ArtifactUrl>(`/ar
 
 export const getArtifactCsv = (artifactId: string) => fetch(`${API_BASE}/artifacts/${artifactId}/csv`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('csv failed'); return r.text() })
 
+export const getMetricsCsv = (sceneId: string) => fetch(`${API_BASE}/scene/${sceneId}/metrics/csv`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('metrics csv failed'); return r.text() })
+
 export type SceneArtifact = { id: string; type: string; uri: string; created_at: string }
 export type SceneMetric = { name: string; value: number; created_at: string }
 export type SceneAudit = { id: string; action: string; details?: Record<string, any> | null; created_at: string }

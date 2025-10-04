@@ -4,6 +4,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
@@ -72,6 +73,19 @@ def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-unty
         db.delete(scene)
         db.commit()
         return {"deleted": str(scene_id)}
+    finally:
+        db.close()
+
+
+@router.get("/scene/{scene_id}/metrics/csv", response_class=PlainTextResponse)
+def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
+    db: Session = SessionLocal()
+    try:
+        rows = db.execute(select(Metric).where(Metric.scene_id == scene_id).order_by(Metric.created_at.asc())).scalars().all()
+        out = ["name,value,created_at"]
+        for m in rows:
+            out.append(f"{m.name},{float(m.value)},{m.created_at.isoformat()}")
+        return "\n".join(out) + "\n"
     finally:
         db.close()
 
