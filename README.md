@@ -302,6 +302,15 @@ Local CI checks
 
 ---
 
+### UI viewer tips
+
+- glTF exports: inline 3D preview using a model viewer when selected.
+- WebM exports: inline video controls for quick review.
+- Potree exports: open in a new tab from the artifact list.
+- Overlays: quick-open buttons for residuals, classes, confidence, entropy, change mask, and delta table.
+- Scenes: list recent scenes and open one to load its artifacts.
+- Health: UI shows PDAL and Open3D availability and versions.
+
 ## 🧩 Example Use Cases
 
 ### 🏗️ Construction / AEC
@@ -332,7 +341,7 @@ Generate costmaps and explainable routes for drones or rovers navigating clutter
 Observability
 -------------
 - Prometheus at `http://localhost:9090` scrapes API `/metrics`.
-- Grafana at `http://localhost:3000` can be used to build dashboards.
+- Grafana at `http://localhost:3000` is auto-provisioned with Prometheus as the default datasource and preloads the API dashboard from `infra/observability/dashboards/api.json`.
 
 ### Exports & Policy
 - Use `POST /export?scene_id=...&type=potree&crs=EPSG:3857` to request an export.
