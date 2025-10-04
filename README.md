@@ -86,7 +86,7 @@ Each stage runs as its own agent orchestrated by LangGraph and Ray:
 ## 📈 Flow
 
 ```mermaid
-%%{init: {"themeVariables": {"fontSize": "24px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
+%%{init: {"themeVariables": {"fontSize": "30px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph TD
   U["Web UI"] -->|Run| A["Ingest"]
   A --> B["QA / Calibration"]
@@ -157,7 +157,7 @@ Potree / Web 3D Viewer + Report + API
 ### Mermaid Architecture 
 
 ```mermaid
-%%{init: {"themeVariables": {"fontSize": "24px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
+%%{init: {"themeVariables": {"fontSize": "30px", "fontFamily": "Inter, Arial, sans-serif"}} }%%
 graph LR
   User["Operator"] --> UI["React + Vite UI\n(Three.js / Potree)"]
   UI --> API["FastAPI / LangGraph Hooks"]

@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from typing import Tuple
 
+from ..utils.tracing import span
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +31,11 @@ def register_clouds(input_path: str, output_path: str) -> RegistrationResult:
     If Open3D is available, this is where FGR+ICP would run and write `output_path`.
     For now, we simulate success and write placeholder outputs.
     """
-    # Placeholder: write empty files
-    open(output_path, "wb").close()
-    residuals_path = output_path + ".residuals.json"
-    open(residuals_path, "w", encoding="utf-8").write("{}\n")
+    with span("registration.stub"):
+        # Placeholder: write empty files
+        open(output_path, "wb").close()
+        residuals_path = output_path + ".residuals.json"
+        open(residuals_path, "w", encoding="utf-8").write("{}\n")
 
     rmse = 0.05
     inlier_ratio = 0.9
