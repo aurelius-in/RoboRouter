@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -41,6 +41,8 @@ export const App: React.FC = () => {
   const [scenesOffset, setScenesOffset] = useState<number>(0)
   const [scenesLimit, setScenesLimit] = useState<number>(50)
   const [runs, setRuns] = useState<any[]>([])
+  const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(false)
+  const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(false)
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
       const res = await apiGet<any>(`/scenes?offset=${nextOffset}&limit=${scenesLimit}`)
@@ -49,7 +51,14 @@ export const App: React.FC = () => {
     } catch {}
   }
   async function refreshRuns() {
-    try { const res = await apiGet<any>('/runs?limit=10'); setRuns(res.items || []) } catch {}
+    try {
+      const params = new URLSearchParams()
+      if (runsOnlyFailed) params.set('only_failed', 'true')
+      if (runsOnlyPassed) params.set('only_passed', 'true')
+      params.set('limit', '10')
+      const res = await apiGet<any>(`/runs?${params.toString()}`)
+      setRuns(res.items || [])
+    } catch {}
   }
 
   const gpu = useMemo(() => (health?.gpu ?? [] as any[]).map((g: any) => g.name).join(', '), [health])
@@ -295,6 +304,8 @@ export const App: React.FC = () => {
         {sceneId && <button onClick={async()=>{ try { const sc = await getScene(sceneId); setArtifacts(sc.artifacts)} catch{} }}>Refresh</button>}
         <button style={{ marginLeft: 8 }} onClick={refreshScenes}>List Scenes</button>
         <button style={{ marginLeft: 8 }} onClick={refreshRuns}>List Runs</button>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
         <div style={{ marginTop: 8 }}>
           <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
           <label style={{ marginLeft: 8 }}><input type="checkbox" onChange={(e)=> setArtifactTypeFilter(e.target.checked ? 'export_' : '') } /> exports only</label>
@@ -322,6 +333,7 @@ export const App: React.FC = () => {
                 <li key={s.id}>
                   <code>{s.id}</code> — {s.crs} — {new Date(s.created_at).toLocaleString()}
                   <button style={{ marginLeft: 6 }} onClick={async()=>{ setSceneId(s.id); try { const sc = await getScene(s.id); setArtifacts(sc.artifacts); setMetrics(sc.metrics || []) } catch {} }}>Open</button>
+                  <button style={{ marginLeft: 6, color: '#b00' }} onClick={async()=>{ try { await deleteScene(s.id); setStatus('Deleted'); refreshScenes() } catch { setStatus('Delete failed') } }}>Delete</button>
                 </li>
               ))}
             </ul>
@@ -346,9 +358,12 @@ export const App: React.FC = () => {
           <div style={{ marginTop: 12 }}>
             <b>Recent runs:</b>
             <ul>
-              {runs.map(r => (
-                <li key={r.id}><code>{r.id}</code> — rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')}</li>
-              ))}
+              {runs.map(r => {
+                const ok = r.overall_pass ? '✅' : '❌'
+                return (
+                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')}</li>
+                )
+              })}
             </ul>
           </div>
         )}
