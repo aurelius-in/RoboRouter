@@ -29,7 +29,7 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
             url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
         else:
             url = art.uri
-        return {"artifact_id": str(artifact_id), "type": art.type, "url": url}
+        return {"artifact_id": str(artifact_id), "type": art.type, "url": url, "uri": art.uri}
     finally:
         db.close()
 

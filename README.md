@@ -60,12 +60,43 @@ Prereqs: Docker with NVIDIA runtime. Then:
 
 Ingest
 ------
+- Endpoint: `POST /ingest`
+- What it does: Reads a local LAS/LAZ (or placeholder), runs QA/PDAL filtering (if available), uploads processed artifact to MinIO, and records metrics.
+
+Example:
+
+```bash
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"source_uri":"/data/sample.laz","crs":"EPSG:3857","sensor_meta":{}}' \
+  http://localhost:8000/ingest | jq
+```
+
+Returns:
+- `scene_id`: UUID for the scene
+- `artifact_ids`: IDs for created artifacts (e.g., ingested LAZ)
+- `metrics`: `point_count_in`, `point_count_out`, `completeness`, `density`, `used_pdal`
+
 Segmentation
 ------------
+- Trigger via: `POST /pipeline/run?scene_id=...` with body `{ "steps": ["segmentation"], "config_overrides": {} }`
+- What it does: Produces tiny overlay summaries (classes, confidence, entropy), uploads to MinIO, and records `miou`.
+
+Artifacts created:
+- `segmentation_classes`, `segmentation_confidence`, `segmentation_entropy`
+
 Change Detection
 ----------------
+- Trigger via: `POST /pipeline/run?scene_id=...` with body `{ "steps": ["change_detection"] }`
+- What it does: Selects baseline/current artifacts (ingested/aligned), writes a change mask summary and a delta table, and records `precision`, `recall`, `f1`.
+
+Artifacts created:
+- `change_mask`, `change_delta`
+
 Navigation
 ----------
+- Map: `GET /nav/map/{scene_id}` — generates a stub occupancy/ESDF metadata artifact.
+- Plan: `POST /nav/plan` with `{ scene_id, start:[x,y], goal:[x,y], constraints:{} }` — returns a stub route, allowed flag, reasons, and a cost breakdown.
 Notes on Optional Dependencies
 ------------------------------
 - PDAL: If present in the API image, ingest can run real filtering/downsampling; otherwise placeholders are used.

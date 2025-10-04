@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -26,10 +26,13 @@ export const App: React.FC = () => {
   const [status, setStatus] = useState<string>('')
   const [artifacts, setArtifacts] = useState<SceneArtifact[]>([])
   const [metrics, setMetrics] = useState<{ name: string; value: number; created_at: string }[]>([])
+  const [orchestratorPlan, setOrchestratorPlan] = useState<any>(null)
+  const [stats, setStats] = useState<any>(null)
+  const [showStats, setShowStats] = useState<boolean>(false)
 
   useEffect(() => {
-    Promise.all([getHealth(), getMeta()])
-      .then(([h, m]) => setHealth({ ...h, meta: m }))
+    Promise.all([getHealth(), getMeta(), getStats()])
+      .then(([h, m, s]) => { setHealth({ ...h, meta: m }); setStats(s) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -46,11 +49,20 @@ export const App: React.FC = () => {
 
   const gpu = useMemo(() => (health?.gpu ?? [] as any[]).map((g: any) => g.name).join(', '), [health])
 
+  const [runReg, setRunReg] = useState<boolean>(true)
+  const [runSeg, setRunSeg] = useState<boolean>(true)
+  const [runChg, setRunChg] = useState<boolean>(true)
+
   async function onRunPipeline() {
     if (!sceneId) return
-    setStatus('Running registration → segmentation → change ...')
-    await runPipeline(sceneId, ['registration', 'segmentation', 'change_detection'])
-    setStatus('Done. (check orchestrator plan in console)')
+    const steps: string[] = []
+    if (runReg) steps.push('registration')
+    if (runSeg) steps.push('segmentation')
+    if (runChg) steps.push('change_detection')
+    setStatus(`Running ${steps.join(' → ')} ...`)
+    const resp = await runPipeline(sceneId, steps)
+    setOrchestratorPlan(resp?.orchestrator?.plan ?? null)
+    setStatus('Done.')
     try {
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
@@ -75,7 +87,7 @@ export const App: React.FC = () => {
     if (!sceneId) return
     setStatus('Requesting Potree export ...')
     try {
-      await requestExport(sceneId, 'potree', 'EPSG:3857')
+      await requestExport(sceneId, 'potree', exportCrs)
       const sc = await getScene(sceneId)
       setArtifacts(sc.artifacts)
       setMetrics(sc.metrics || [])
@@ -159,7 +171,13 @@ export const App: React.FC = () => {
             <span style={{ marginLeft: 8, color: '#999' }}>CORS: {health.meta.cors.join(', ')}</span>
           )}
         )}
+        <button style={{ marginLeft: 8 }} onClick={()=>setShowStats(v=>!v)}>{showStats ? 'Hide' : 'Show'} stats</button>
       </div>
+      {showStats && stats && (
+        <div style={{ marginBottom: 12, color: '#555' }}>
+          <b>Stats:</b> scenes={stats.scenes} artifacts={stats.artifacts} metrics={stats.metrics} exports={stats.exports}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 24 }}>
         <div>
@@ -170,7 +188,14 @@ export const App: React.FC = () => {
 
         <div>
           <h3>Pipeline</h3>
-          <button onClick={onRunPipeline}>Run</button>
+          <div>
+            <label><input type="checkbox" checked={runReg} onChange={(e)=>setRunReg(e.target.checked)} /> registration</label>
+            &nbsp;
+            <label><input type="checkbox" checked={runSeg} onChange={(e)=>setRunSeg(e.target.checked)} /> segmentation</label>
+            &nbsp;
+            <label><input type="checkbox" checked={runChg} onChange={(e)=>setRunChg(e.target.checked)} /> change</label>
+          </div>
+          <button style={{ marginTop: 4 }} onClick={onRunPipeline}>Run</button>
         </div>
 
         <div>
@@ -332,6 +357,11 @@ export const App: React.FC = () => {
       </div>
 
       <div style={{ marginTop: 16, color: '#555' }}>{status}</div>
+      {orchestratorPlan && (
+        <div style={{ marginTop: 8, color: '#555' }}>
+          <b>Plan:</b> <code>{JSON.stringify(orchestratorPlan)}</code>
+        </div>
+      )}
     </div>
   )
 }
