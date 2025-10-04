@@ -20,7 +20,7 @@ router = APIRouter(tags=["Artifacts"])
 
 
 @router.get("/artifacts/{artifact_id}")
-def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
+def get_artifact_url(artifact_id: uuid.UUID, filename: str | None = None, as_attachment: bool = False) -> Dict[str, Any]:
     db: Session = SessionLocal()
     try:
         art = db.get(Artifact, artifact_id)
@@ -35,7 +35,11 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
             # Simple in-process cache for presigned URLs
             url = _get_cached_url(str(artifact_id))
             if not url:
-                url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds)
+                headers = None
+                if filename or as_attachment:
+                    disp = f"attachment; filename=\"{filename or key.split('/')[-1]}\"" if as_attachment else f"inline; filename=\"{filename or key.split('/')[-1]}\""
+                    headers = {"response-content-disposition": disp}
+                url = presigned_get_url(client, bucket, key, expires=settings.presign_expires_seconds, response_headers=headers)
                 _cache_url(str(artifact_id), url, settings.presign_expires_seconds)
             expires_in = _ttl_remaining(str(artifact_id))
             try:
@@ -46,8 +50,9 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
                 lm = getattr(stat, "last_modified", None)
                 if lm is not None:
                     last_modified = lm.timestamp()
+                etag = getattr(stat, "etag", None)
             except Exception:
-                pass
+                etag = None
         else:
             url = art.uri
             expires_in = None
@@ -60,6 +65,7 @@ def get_artifact_url(artifact_id: uuid.UUID) -> Dict[str, Any]:
             "size_bytes": size_bytes,
             "content_type": content_type,
             "last_modified": last_modified,
+            "etag": etag if 'etag' in locals() else None,
         }
     finally:
         db.close()

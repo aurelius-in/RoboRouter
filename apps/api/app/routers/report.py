@@ -71,9 +71,9 @@ def generate_report(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-u
             html_obj = f"reports/{scene_id}.html"
             pdf_obj = f"reports/{scene_id}.pdf"
             if html_ok:
-                upload_file(client, "roborouter-processed", html_obj, html_path)
+                upload_file(client, "roborouter-processed", html_obj, html_path, content_type="text/html; charset=utf-8")
             if pdf_ok:
-                upload_file(client, "roborouter-processed", pdf_obj, pdf_path)
+                upload_file(client, "roborouter-processed", pdf_obj, pdf_path, content_type="application/pdf")
 
         # Persist artifacts and audit
         if html_ok:

@@ -139,7 +139,7 @@ export const App: React.FC = () => {
   const [artifactUrl, setArtifactUrl] = useState<string>('')
   const [artifactType, setArtifactType] = useState<string>('')
   const [artifactExpiry, setArtifactExpiry] = useState<number | null>(null)
-  const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null } | null>(null)
+  const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null; etag?: string | null } | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
@@ -161,7 +161,7 @@ export const App: React.FC = () => {
       setArtifactUrl(info.url)
       setArtifactType(info.type)
       setArtifactExpiry(info.expires_in_seconds ?? null)
-      setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified })
+      setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified, etag: info.etag })
       if (info.type === 'export_potree' || info.type === 'report_html') {
         window.open(info.url, '_blank')
         setArtifactPreview('')
@@ -183,7 +183,7 @@ export const App: React.FC = () => {
     setArtifactUrl(info.url)
     setArtifactType(info.type)
     setArtifactExpiry(info.expires_in_seconds ?? null)
-    setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified })
+    setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified, etag: info.etag })
     try {
       const resp = await fetch(info.url)
       const text = await resp.text()
@@ -518,6 +518,9 @@ export const App: React.FC = () => {
             )}
             {artifactMeta.last_modified && (
               <span> &nbsp; modified={new Date(artifactMeta.last_modified*1000).toLocaleString()}</span>
+            )}
+            {artifactMeta.etag && (
+              <span> &nbsp; etag={artifactMeta.etag}</span>
             )}
           </div>
         )}
