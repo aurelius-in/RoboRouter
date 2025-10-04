@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
 from ..policy.opa import evaluate_export_policy
-from ..observability import EXPORT_COUNT, SERVICE_NAME
+from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
 from ..storage.minio_client import get_minio_client, upload_file
 
@@ -48,6 +48,8 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         # Export using tool-specific handlers (with fallbacks)
         client = get_minio_client()
         with tempfile.TemporaryDirectory() as td:
+            import time as _t
+            _t0 = _t.time()
             # For now, simulate having a LAZ input by creating a tiny placeholder
             input_laz = f"{td}/input_{scene_id}.laz"
             with open(input_laz, "w", encoding="utf-8") as f:
@@ -86,6 +88,10 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         db.add(AuditLog(scene_id=scene_id, action="export_allowed", details={"type": type, "uri": uri}))
         db.commit()
         EXPORT_COUNT.labels(SERVICE_NAME, type, "allowed").inc()
+        try:
+            EXPORT_LATENCY.labels(SERVICE_NAME, type).observe(_t.time() - _t0)
+        except Exception:
+            pass
         return {"scene_id": str(scene_id), "type": type, "uri": uri, "artifact_id": str(art.id)}
     finally:
         db.close()
