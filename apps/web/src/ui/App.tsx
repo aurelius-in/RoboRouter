@@ -123,6 +123,12 @@ export const App: React.FC = () => {
       <h1>RoboRouter</h1>
       <div style={{ marginBottom: 12 }}>
         <b>API:</b> {health?.status} &nbsp; <b>GPU:</b> {gpu || 'none'}
+        {health?.deps && (
+          <span style={{ marginLeft: 12, color: '#555' }}>
+            <b>PDAL:</b> {health.deps.pdal?.available ? 'yes' : 'no'}{health.deps.pdal?.version ? ` (${health.deps.pdal.version})` : ''}
+            &nbsp; <b>Open3D:</b> {health.deps.open3d?.available ? 'yes' : 'no'}{health.deps.open3d?.version ? ` (${health.deps.open3d.version})` : ''}
+          </span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 24 }}>

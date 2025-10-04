@@ -31,3 +31,19 @@ def test_export_blocked_type(tmp_path) -> None:  # type: ignore[no-untyped-def]
     e = client.post(f"/export?scene_id={scene_id}&type=exe&crs=EPSG:3857")
     assert e.status_code == 403
 
+
+def test_export_allowed_other_types(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    client = TestClient(app)
+    src = tmp_path / "empty.laz"
+    src.touch()
+    r = client.post("/ingest", json={"source_uri": str(src), "crs": "EPSG:3857", "sensor_meta": {}})
+    assert r.status_code == 200
+    scene_id = r.json()["scene_id"]
+
+    for t in ["laz", "gltf", "webm"]:
+        e = client.post(f"/export?scene_id={scene_id}&type={t}&crs=EPSG:3857")
+        assert e.status_code == 200
+        body = e.json()
+        assert body["type"] == t
+        assert body["uri"].startswith("s3://")
+
