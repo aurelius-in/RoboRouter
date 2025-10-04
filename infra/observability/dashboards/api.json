@@ -26,6 +26,22 @@
           "legendFormat": "p95"
         }
       ]
+    },
+    {
+      "type": "stat",
+      "title": "Exports allowed (10m)",
+      "gridPos": { "w": 12, "h": 6, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "sum(increase(roborouter_exports_total{status=\"allowed\"}[10m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Export latency p95 (s)",
+      "gridPos": { "w": 24, "h": 8, "x": 0, "y": 22 },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(roborouter_export_latency_seconds_bucket[5m])))" }
+      ]
     }
   ]
 }
