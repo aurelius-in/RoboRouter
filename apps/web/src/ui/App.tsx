@@ -72,10 +72,43 @@ export const App: React.FC = () => {
 
   const [selectedArtifactId, setSelectedArtifactId] = useState<string>('')
   const [artifactUrl, setArtifactUrl] = useState<string>('')
+  const [artifactPreview, setArtifactPreview] = useState<string>('')
+
+  async function openLatestByType(type: string) {
+    if (!sceneId) return
+    try {
+      if (artifacts.length === 0) {
+        const sc = await getScene(sceneId)
+        setArtifacts(sc.artifacts)
+      }
+      const list = artifacts.length ? artifacts : (await getScene(sceneId)).artifacts
+      const found = [...list].reverse().find(a => a.type === type)
+      if (!found) { setStatus(`No artifact of type ${type}`); return }
+      setSelectedArtifactId(found.id)
+      const info = await getArtifactUrl(found.id)
+      setArtifactUrl(info.url)
+      try {
+        const resp = await fetch(info.url)
+        const text = await resp.text()
+        try { setArtifactPreview(JSON.stringify(JSON.parse(text), null, 2)) }
+        catch { setArtifactPreview(text.slice(0, 2000)) }
+      } catch { setArtifactPreview('') }
+      setStatus(`Opened latest ${type}`)
+    } catch { setStatus('Failed to open artifact') }
+  }
   async function onFetchArtifact() {
     if (!selectedArtifactId) return
     const info = await getArtifactUrl(selectedArtifactId)
     setArtifactUrl(info.url)
+    try {
+      const resp = await fetch(info.url)
+      const text = await resp.text()
+      // Try to pretty print JSON, fallback to raw text
+      try { setArtifactPreview(JSON.stringify(JSON.parse(text), null, 2)) }
+      catch { setArtifactPreview(text.slice(0, 2000)) }
+    } catch {
+      setArtifactPreview('')
+    }
   }
 
   if (loading) return <div style={{ padding: 16 }}>Loading...</div>
@@ -100,11 +133,32 @@ export const App: React.FC = () => {
 
         <div>
           <h3>Overlays</h3>
-          <label><input type="checkbox" /> Residuals</label><br/>
-          <label><input type="checkbox" /> Classes</label><br/>
-          <label><input type="checkbox" /> Confidence</label><br/>
-          <label><input type="checkbox" /> Uncertainty</label><br/>
-          <label><input type="checkbox" /> Change</label>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div>
+              Residuals
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('residuals')}>Open latest</button>
+            </div>
+            <div>
+              Classes
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('segmentation_classes')}>Open latest</button>
+            </div>
+            <div>
+              Confidence
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('segmentation_confidence')}>Open latest</button>
+            </div>
+            <div>
+              Entropy
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('segmentation_entropy')}>Open latest</button>
+            </div>
+            <div>
+              Change Mask
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('change_mask')}>Open latest</button>
+            </div>
+            <div>
+              Delta Table
+              <button style={{ marginLeft: 8 }} onClick={()=>openLatestByType('change_delta')}>Open latest</button>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -143,6 +197,9 @@ export const App: React.FC = () => {
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
         </div>
         {artifactUrl && <div style={{ marginTop: 8, color: '#333' }}>URL: {artifactUrl}</div>}
+        {artifactPreview && (
+          <pre style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', background: '#f6f8fa', padding: 8, borderRadius: 6 }}>{artifactPreview}</pre>
+        )}
       </div>
 
       <div style={{ marginTop: 16, color: '#555' }}>{status}</div>

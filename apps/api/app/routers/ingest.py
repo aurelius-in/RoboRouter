@@ -43,6 +43,7 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
                 output_path,
                 voxel_size=settings.ingest_voxel_size_m,
                 stddev_mult=settings.ingest_outlier_multiplier,
+                mean_k=settings.ingest_outlier_mean_k,
                 intensity_min=settings.ingest_intensity_min,
                 intensity_max=settings.ingest_intensity_max,
                 out_srs=payload.crs,

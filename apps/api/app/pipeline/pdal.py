@@ -17,13 +17,14 @@ def build_ingest_pipeline(
     *,
     voxel_size: float,
     stddev_mult: float,
+    mean_k: int,
     intensity_min: float,
     intensity_max: float,
     out_srs: Optional[str] | None = None,
 ) -> Dict:
     stages = [
         input_path,
-        {"type": "filters.statisticaloutlier", "mean_k": 8, "multiplier": stddev_mult},
+        {"type": "filters.statisticaloutlier", "mean_k": mean_k, "multiplier": stddev_mult},
         {"type": "filters.voxelgrid", "leaf_x": voxel_size, "leaf_y": voxel_size, "leaf_z": voxel_size},
         {"type": "filters.range", "limits": f"Intensity[{intensity_min}:{intensity_max}]"},
     ]
