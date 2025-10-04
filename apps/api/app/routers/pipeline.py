@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, Metric, Scene
 from ..pipeline.registration import register_clouds
+from ..pipeline.segmentation import run_segmentation
 from ..storage.minio_client import get_minio_client, upload_file
 
 
@@ -63,6 +64,44 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 db.refresh(art_resid)
                 out["artifacts"].extend([str(art_aligned.id), str(art_resid.id)])
                 out["metrics"].update({"rmse": result.rmse, "inlier_ratio": result.inlier_ratio})
+
+        if "segmentation" in steps:
+            # Prefer aligned artifact if available
+            aligned_art = db.execute(
+                select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "aligned").order_by(Artifact.created_at.desc())
+            ).scalars().first()
+            source_art = aligned_art
+            if not source_art:
+                source_art = db.execute(
+                    select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.desc())
+                ).scalars().first()
+            if not source_art:
+                raise HTTPException(status_code=400, detail="No input artifact found for segmentation")
+
+            client = get_minio_client()
+            with tempfile.TemporaryDirectory() as td:
+                # Simulate segmentation with temp input
+                input_path = str((__import__("pathlib").Path(td) / "input_aligned.laz"))
+                open(input_path, "wb").close()
+                seg_out = run_segmentation(input_path, td)
+
+                classes_obj = f"segmentation/classes_{scene_id}.json"
+                conf_obj = f"segmentation/confidence_{scene_id}.json"
+                ent_obj = f"segmentation/entropy_{scene_id}.json"
+                upload_file(client, "roborouter-processed", classes_obj, seg_out["classes_path"])  # type: ignore[index]
+                upload_file(client, "roborouter-processed", conf_obj, seg_out["confidence_path"])  # type: ignore[index]
+                upload_file(client, "roborouter-processed", ent_obj, seg_out["entropy_path"])  # type: ignore[index]
+
+                art_classes = Artifact(scene_id=scene_id, type="segmentation_classes", uri=f"s3://roborouter-processed/{classes_obj}")
+                art_conf = Artifact(scene_id=scene_id, type="segmentation_confidence", uri=f"s3://roborouter-processed/{conf_obj}")
+                art_ent = Artifact(scene_id=scene_id, type="segmentation_entropy", uri=f"s3://roborouter-processed/{ent_obj}")
+                db.add_all([art_classes, art_conf, art_ent])
+                db.add(Metric(scene_id=scene_id, name="miou", value=float(seg_out["miou"])) )  # type: ignore[index]
+                db.commit()
+                for a in (art_classes, art_conf, art_ent):
+                    db.refresh(a)
+                    out["artifacts"].append(str(a.id))
+                out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
 
         return out
     finally:

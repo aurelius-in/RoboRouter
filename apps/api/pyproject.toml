@@ -9,6 +9,7 @@ dependencies = [
   "psycopg2-binary==2.9.9",
   "minio==7.2.8",
   "open3d==0.18.0",
+  "numpy==1.26.4",
 ]
 
 
