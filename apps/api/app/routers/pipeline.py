@@ -16,6 +16,7 @@ from ..pipeline.change_detection import run_change_detection
 from ..storage.minio_client import get_minio_client, upload_file
 from ..observability import REQUEST_COUNT, REQUEST_LATENCY, SERVICE_NAME
 import time
+from ..utils.hash import sha256_file
 from ..orchestrator.stub import OrchestratorStub
 
 
@@ -62,6 +63,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 db.add(art_aligned)
                 db.add(Metric(scene_id=scene_id, name="rmse", value=float(result.rmse)))
                 db.add(Metric(scene_id=scene_id, name="inlier_ratio", value=float(result.inlier_ratio)))
+                try:
+                    db.add(Metric(scene_id=scene_id, name="aligned_sha256", value=float(int(sha256_file(result.aligned_path), 16) % 1e6)))
+                except Exception:
+                    pass
 
                 resid_obj = f"overlays/residuals_{scene_id}.json"
                 upload_file(client, "roborouter-processed", resid_obj, result.residuals_path)
