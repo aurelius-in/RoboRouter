@@ -199,6 +199,7 @@ export const App: React.FC = () => {
           <div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>Potree tiles open in a new tab.</div>
           <div style={{ marginTop: 6 }}>
             <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>
+            <button style={{ marginLeft: 6 }} onClick={()=>openLatestByType('export_potree')}>Open latest Potree</button>
           </div>
         </div>
       </div>
@@ -230,6 +231,7 @@ export const App: React.FC = () => {
               <button style={{ marginLeft: 8 }} onClick={()=>{ setSelectedArtifactId(a.id) }}>Select</button>
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); window.open(info.url, '_blank') }}>Open</button>
               <button style={{ marginLeft: 6 }} onClick={async()=>{ const info = await getArtifactUrl(a.id); try { await navigator.clipboard.writeText(info.url); setStatus('Copied URL'); } catch { setStatus('Copy failed') } }}>Copy URL</button>
+              <a style={{ marginLeft: 6 }} href="#" onClick={async(e)=>{ e.preventDefault(); const info = await getArtifactUrl(a.id); const aEl = document.createElement('a'); aEl.href = info.url; aEl.download = ''; document.body.appendChild(aEl); aEl.click(); aEl.remove(); }}>Download</a>
             </li>
           ))}
         </ul>
