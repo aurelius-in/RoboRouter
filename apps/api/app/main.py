@@ -11,6 +11,7 @@ from .routers.pipeline import router as pipeline_router
 from .routers.artifacts import router as artifacts_router
 from .routers.report import router as report_router
 from .routers.export import router as export_router
+from .routers.navigation import router as navigation_router
 from .observability import setup_metrics
 from .otel import setup_otel
 
@@ -55,6 +56,7 @@ app.include_router(pipeline_router)
 app.include_router(artifacts_router)
 app.include_router(report_router)
 app.include_router(export_router)
+app.include_router(navigation_router)
 
 # Observability
 setup_metrics(app)

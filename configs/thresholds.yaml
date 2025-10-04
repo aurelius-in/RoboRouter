@@ -19,3 +19,8 @@ change_detection:
   min_voxel_size_m: 0.10
   min_points_per_voxel: 3
 
+navigation:
+  max_slope_deg: 15.0
+  min_clearance_m: 0.2
+  max_uncertainty: 0.7
+
