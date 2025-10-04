@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, getScene, requestExport, type SceneArtifact, apiGet, getMeta, getStats, getConfig } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -32,8 +32,8 @@ export const App: React.FC = () => {
   const [showStats, setShowStats] = useState<boolean>(false)
 
   useEffect(() => {
-    Promise.all([getHealth(), getMeta(), getStats()])
-      .then(([h, m, s]) => { setHealth({ ...h, meta: m }); setStats(s) })
+    Promise.all([getHealth(), getMeta(), getStats(), getConfig()])
+      .then(([h, m, s, cfg]) => { setHealth({ ...h, meta: m, cfg }); setStats(s) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -175,6 +175,9 @@ export const App: React.FC = () => {
           )}
         )}
         <button style={{ marginLeft: 8 }} onClick={()=>setShowStats(v=>!v)}>{showStats ? 'Hide' : 'Show'} stats</button>
+        {health?.cfg && (
+          <span style={{ marginLeft: 8, color: '#777' }}>retention={health.cfg.retention_days}d</span>
+        )}
       </div>
       {showStats && stats && (
         <div style={{ marginBottom: 12, color: '#555' }}>

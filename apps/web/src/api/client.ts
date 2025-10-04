@@ -48,5 +48,6 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
 
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
+export const getConfig = () => apiGet<any>('/config')
 
 
