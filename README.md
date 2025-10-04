@@ -323,6 +323,7 @@ Observability
 ### Exports & Policy
 - Use `POST /export?scene_id=...&type=potree&crs=EPSG:3857` to request an export.
 - Requests are evaluated against OPA-like policies; disallowed types or CRS return 403 with a clear reason.
+- External tools: Potree tiles and LAZ may require `PotreeConverter` and `laszip` on PATH; otherwise placeholders are produced.
 
 ---
 
