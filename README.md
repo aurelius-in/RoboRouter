@@ -2,7 +2,9 @@
   <img src="robologo_trans.png" alt="RoboRouter" width="50%" />
 </p>
 
-Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves.
+Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves. 
+
+[![CI](https://github.com/aurelius-in/RoboRouter/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/aurelius-in/RoboRouter/actions/workflows/ci.yml)
 
 Getting started
 ----------------
@@ -241,6 +243,13 @@ bash scripts/fetch_samples.sh
 # Open the UI
 http://localhost:5173
 ````
+
+Local CI checks
+---------------
+- Lint: `ruff check .`
+- Format check: `black --check .`
+- Types: `mypy apps/api`
+- Tests: `pytest -q --cov=apps/api --cov-fail-under=70`
 
 1. Load a sample scene.
 2. Run the pipeline (Ingest → Register → Segment → Model).

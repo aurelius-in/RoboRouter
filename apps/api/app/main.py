@@ -12,9 +12,11 @@ from .routers.artifacts import router as artifacts_router
 from .routers.report import router as report_router
 from .routers.export import router as export_router
 from .observability import setup_metrics
+from .otel import setup_otel
 
 
 app = FastAPI(title="RoboRouter API", version="0.1.0")
+setup_otel("roborouter-api")
 
 
 def _get_gpu_inventory() -> List[Dict[str, Any]]:
