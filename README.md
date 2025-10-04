@@ -2,9 +2,35 @@
   <img src="robologo_trans.png" alt="RoboRouter" width="50%" />
 </p>
 
-Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves. 
+<p align="center">
+  <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white"></a>
+  <a href="https://developer.nvidia.com/cuda-toolkit"><img alt="CUDA" src="https://img.shields.io/badge/CUDA-12.x-76B900?logo=nvidia&logoColor=white"></a>
+  <a href="https://fastapi.tiangolo.com/"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-ready-009688?logo=fastapi&logoColor=white"></a>
+  <a href="https://www.ray.io/"><img alt="Ray" src="https://img.shields.io/badge/Ray-cluster-028CF0?logo=ray&logoColor=white"></a>
+  <a href="https://langchain-ai.github.io/langgraph/"><img alt="LangGraph" src="https://img.shields.io/badge/LangGraph-orchestrator-1E88E5"></a>
+  <a href="https://www.docker.com/"><img alt="Docker" src="https://img.shields.io/badge/Docker-NVIDIA%20runtime-2496ED?logo=docker&logoColor=white"></a>
+  <a><img alt="On‑prem" src="https://img.shields.io/badge/On%E2%80%91prem-first-444444"></a>
+  <a><img alt="Air‑gapped" src="https://img.shields.io/badge/Air%E2%80%91gapped-enabled-2E7D32"></a>
+</p>
 
-[![CI](https://github.com/aurelius-in/RoboRouter/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/aurelius-in/RoboRouter/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://opentelemetry.io/"><img alt="OpenTelemetry" src="https://img.shields.io/badge/OTel-traces-563D7C"></a>
+  <a href="https://prometheus.io/"><img alt="Prometheus" src="https://img.shields.io/badge/Prometheus-metrics-E6522C?logo=prometheus&logoColor=white"></a>
+  <a href="https://grafana.com/"><img alt="Grafana" src="https://img.shields.io/badge/Grafana-dashboards-F46800?logo=grafana&logoColor=white"></a>
+  <a href="https://mlflow.org/"><img alt="MLflow" src="https://img.shields.io/badge/MLflow-tracking-0194E2"></a>
+  <a href="https://dvc.org/"><img alt="DVC" src="https://img.shields.io/badge/DVC-data-945DD6?logo=dvc&logoColor=white"></a>
+  <a href="https://pre-commit.com/"><img alt="pre-commit" src="https://img.shields.io/badge/pre--commit-hooks-FAB040?logo=pre-commit&logoColor=black"></a>
+  <a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/badge/ruff-linting-0C4B33"></a>
+  <a href="https://black.readthedocs.io/"><img alt="Black" src="https://img.shields.io/badge/black-format-000000"></a>
+  <a href="https://mypy-lang.org/"><img alt="mypy" src="https://img.shields.io/badge/mypy-types-2A6DB1"></a>
+  <a><img alt="Coverage" src="https://img.shields.io/badge/Coverage-%E2%89%A570%25-4CAF50"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Apache--2.0-3F51B5"></a>
+  <a href="https://github.com/aurelius-in/RoboRouter/commits/develop"><img alt="Last commit" src="https://img.shields.io/github/last-commit/aurelius-in/RoboRouter/develop"></a>
+  <a href="https://github.com/aurelius-in/RoboRouter/issues"><img alt="Issues" src="https://img.shields.io/github/issues/aurelius-in/RoboRouter"></a>
+  <a href="https://github.com/aurelius-in/RoboRouter/pulls"><img alt="PRs" src="https://img.shields.io/badge/PRs-welcome-brightgreen"></a>
+</p>
+
+Enterprise-grade, on-prem multi-agent 3D point-cloud perception and explainable autonomy stack. See `docs/` and `README.md` sections for setup and architecture as the project evolves. 
 
 Getting started
 ----------------
