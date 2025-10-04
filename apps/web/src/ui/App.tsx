@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
+import { getHealth, runPipeline, generateReport, getArtifactUrl, refreshArtifact, headArtifact, getArtifactCsv, getMetricsCsv, getScene, requestExport, type SceneArtifact, apiGet, apiPost, getMeta, getStats, getConfig, policyCheck, authPing, adminCleanup, deleteScene, getModels, getLatestArtifact, getGates, uploadFile, listSceneArtifacts } from '../api/client'
 
 declare global {
   namespace JSX {
@@ -524,6 +524,7 @@ export const App: React.FC = () => {
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>
           <button onClick={async()=>{ if(!selectedArtifactId) return; try { const info = await refreshArtifact(selectedArtifactId); setArtifactUrl(info.url); setArtifactType(info.type); setArtifactExpiry(info.expires_in_seconds ?? null); setArtifactMeta({ size_bytes: info.size_bytes, content_type: info.content_type, last_modified: info.last_modified, etag: info.etag }); setStatus('Presigned URL refreshed') } catch { setStatus('Refresh failed') } }}>Refresh URL</button>
+          <button onClick={async()=>{ if(!selectedArtifactId) return; try { const meta = await headArtifact(selectedArtifactId); setArtifactMeta({ size_bytes: meta.size_bytes ?? null, content_type: meta.content_type ?? null, last_modified: meta.last_modified ?? null, etag: meta.etag ?? null }); setStatus('Metadata refreshed') } catch { setStatus('Meta refresh failed') } }}>Refresh Meta</button>
           {artifactUrl && <a href={artifactUrl} target="_blank">Open</a>}
           {/* Download as attachment with custom filename */}
           {selectedArtifactId && (
