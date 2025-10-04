@@ -11,7 +11,13 @@ function authHeaders(): Record<string, string> {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, { headers: { ...authHeaders() } })
-  if (!r.ok) throw new Error(`${path} failed`)
+  if (!r.ok) {
+    if (r.status === 429) {
+      const ra = r.headers.get('Retry-After') || '5'
+      throw new Error(`Rate limited, retry after ${ra}s`)
+    }
+    throw new Error(`${path} failed`)
+  }
   return r.json() as Promise<T>
 }
 
@@ -21,13 +27,25 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!r.ok) throw new Error(`${path} failed`)
+  if (!r.ok) {
+    if (r.status === 429) {
+      const ra = r.headers.get('Retry-After') || '5'
+      throw new Error(`Rate limited, retry after ${ra}s`)
+    }
+    throw new Error(`${path} failed`)
+  }
   return r.json() as Promise<T>
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers: { ...authHeaders() } })
-  if (!r.ok) throw new Error(`${path} failed`)
+  if (!r.ok) {
+    if (r.status === 429) {
+      const ra = r.headers.get('Retry-After') || '5'
+      throw new Error(`Rate limited, retry after ${ra}s`)
+    }
+    throw new Error(`${path} failed`)
+  }
   return r.json() as Promise<T>
 }
 
@@ -100,6 +118,12 @@ export const listSceneArtifacts = (sceneId: string, offset: number, limit: numbe
   if (opts?.type) p.set('type', opts.type)
   if (opts?.exportsOnly) p.set('exports_only', 'true')
   return apiGet<{ items: { id: string; type: string; uri: string; created_at: string }[]; offset: number; limit: number; total: number }>(`/scene/${sceneId}/artifacts?${p.toString()}`)
+}
+export const getArtifactsCsv = (sceneId: string, opts?: { type?: string; exportsOnly?: boolean }) => {
+  const p = new URLSearchParams()
+  if (opts?.type) p.set('type', opts.type)
+  if (opts?.exportsOnly) p.set('exports_only', 'true')
+  return fetch(`${API_BASE}/scene/${sceneId}/artifacts/csv?${p.toString()}`, { headers: { ...(authHeaders()) as any } }).then(r=>{ if(!r.ok) throw new Error('artifacts csv failed'); return r.text() })
 }
 export const getScenesCsv = (opts?: { offset?: number; limit?: number; q?: string }) => {
   const p = new URLSearchParams()
