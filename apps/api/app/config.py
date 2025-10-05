@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Learned change detection
     change_use_learned: bool = False
 
+    # Policy / OPA
+    opa_policy_path: str | None = None
+
     class Config:
         env_prefix = "ROBOROUTER_"
 
