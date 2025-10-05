@@ -48,7 +48,10 @@ class Settings(BaseSettings):
     change_use_learned: bool = False
 
     # Policy / OPA
-    opa_policy_path: str | None = None
+    opa_policy_path: str | None = "configs/opa/policy.yaml"
+
+    # Orchestrator
+    orchestrator: str = "stub"  # one of: stub, ray
 
     class Config:
         env_prefix = "ROBOROUTER_"

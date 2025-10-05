@@ -8,7 +8,8 @@ from sqlalchemy import select
 from ..db import SessionLocal
 from ..models import AuditLog, Scene
 
-from ..policy.opa import evaluate_export_policy
+from ..policy.opa import evaluate_export_policy, _load_policy
+from ..utils.decision_log import write_decision
 
 
 router = APIRouter(tags=["Policy"])
@@ -19,7 +20,12 @@ def policy_check(type: str | None = None, export_type: str | None = None, crs: s
     t = export_type or type or ""
     c = crs or ""
     allowed, reason = evaluate_export_policy({"type": t, "crs": c})
+    _, _, policy_version = _load_policy()
     # Best-effort decision log
+    try:
+        write_decision("policy_check", {"type": t, "crs": c, "allowed": allowed})
+    except Exception:
+        pass
     if scene_id:
         db: Session = SessionLocal()
         try:
@@ -28,7 +34,7 @@ def policy_check(type: str | None = None, export_type: str | None = None, crs: s
             except Exception:
                 sid = None
             if sid is not None:
-                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or '')}))
+                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or ''), "policy_version": policy_version}))
                 db.commit()
         finally:
             db.close()
@@ -40,7 +46,12 @@ def policy_check_post(payload: Dict[str, Any]) -> Dict[str, Any]:  # type: ignor
     t = payload.get("export_type") or payload.get("type") or ""
     c = payload.get("crs") or ""
     allowed, reason = evaluate_export_policy({"type": t, "crs": c})
+    _, _, policy_version = _load_policy()
     # Best-effort decision log
+    try:
+        write_decision("policy_check", {"type": t, "crs": c, "allowed": allowed})
+    except Exception:
+        pass
     scene_id = payload.get("scene_id")
     if scene_id:
         db: Session = SessionLocal()
@@ -50,7 +61,7 @@ def policy_check_post(payload: Dict[str, Any]) -> Dict[str, Any]:  # type: ignor
             except Exception:
                 sid = None
             if sid is not None:
-                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or '')}))
+                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or ''), "policy_version": policy_version}))
                 db.commit()
         finally:
             db.close()

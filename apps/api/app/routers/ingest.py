@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import Base, engine, get_db
-from ..models import Artifact, Metric, Scene
+from ..models import Artifact, Metric, Scene, AuditLog
 from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count, get_bounds_and_srs
 from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file, download_file
@@ -82,6 +82,14 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         db.commit()
         db.refresh(art)
         artifact_ids.append(art.id)
+        # Audit provenance
+        db.add(AuditLog(scene_id=scene.id, action="ingest", details={
+            "source_uri": payload.source_uri,
+            "output_uri": f"s3://{settings.minio_bucket_processed}/{object_name}",
+            "crs": payload.crs,
+            "used_pdal": used_pdal,
+        }))
+        db.commit()
 
     # Metrics: attempt real counts with PDAL, otherwise fall back to zeros
     count_in = get_point_count(payload.source_uri) if has_pdal() else None

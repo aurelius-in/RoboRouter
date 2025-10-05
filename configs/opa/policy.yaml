@@ -1,0 +1,4 @@
+version: 0.1.0
+allowed_export_types: [potree, potree_zip, laz, gltf, webm]
+allowed_crs: [EPSG:3857, EPSG:4978, EPSG:26915]
+

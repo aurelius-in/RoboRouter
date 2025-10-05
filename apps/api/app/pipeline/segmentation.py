@@ -15,7 +15,7 @@ from ..utils.tracing import span
 logger = logging.getLogger(__name__)
 
 
-def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float]:
+def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | int]:
     """CPU fallback segmentation stub.
 
     Generates small overlay summaries for classes, confidence and entropy.
@@ -23,8 +23,17 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float]:
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
+    used_minkowski = 0
+    used_cuda = 0
     if settings.seg_use_minkowski and settings.seg_model_path:
         with span("segmentation.minkowski_stub"):
+            try:
+                import torch  # type: ignore
+                used_cuda = 1 if torch.cuda.is_available() else 0
+                __import__("MinkowskiEngine")  # type: ignore
+                used_minkowski = 1
+            except Exception:
+                used_minkowski = 0
             # Placeholder: treat as deterministic pseudo-preds when enabled
             rng = np.random.default_rng(123)
             num_points = 2000
@@ -74,6 +83,8 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float]:
         "confidence_path": conf_path,
         "entropy_path": ent_path,
         "miou": miou_stub,
+        "seg_used_minkowski": int(used_minkowski),
+        "seg_used_cuda": int(used_cuda),
     }
 
 

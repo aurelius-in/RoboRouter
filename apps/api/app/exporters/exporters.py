@@ -29,6 +29,11 @@ def export_potree(input_laz: str, out_dir: str) -> str:
 			"<html><body><h3>Potree export failed</h3><p>Placeholder created.</p></body></html>",
 			encoding="utf-8",
 		)
+	# Write progress marker for UI (best-effort)
+	try:
+		Path(out_dir, "progress.json").write_text('{"status":"done"}', encoding="utf-8")
+	except Exception:
+		pass
 	# Write a tiny manifest.json for UI consumers (file list + sizes)
 	try:
 		files = []

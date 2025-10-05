@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
-from ..policy.opa import evaluate_export_policy
+from ..policy.opa import evaluate_export_policy, _load_policy
+from ..utils.decision_log import write_decision
 from ..utils.crs import validate_crs
 from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
@@ -33,9 +34,14 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
             raise HTTPException(status_code=400, detail=f"Invalid or unsupported CRS: {crs}")
 
         allowed, reason = evaluate_export_policy({"type": type, "crs": crs, "rounding_mm": 5})
+        _, _, policy_version = _load_policy()
         if not allowed:
-            db.add(AuditLog(scene_id=scene_id, action="export_blocked", details={"type": type, "reason": reason}))
+            db.add(AuditLog(scene_id=scene_id, action="export_blocked", details={"type": type, "reason": reason, "policy_version": policy_version}))
             db.commit()
+            try:
+                write_decision("export_blocked", {"scene_id": str(scene_id), "type": type, "crs": crs, "reason": reason})
+            except Exception:
+                pass
             EXPORT_COUNT.labels(SERVICE_NAME, type, "blocked").inc()
             raise HTTPException(status_code=403, detail=reason)
 
@@ -101,12 +107,25 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         art = Artifact(scene_id=scene_id, type=f"export_{type}", uri=uri)
         db.add(art)
         # Include a policy "version" hint in audit to support decision provenance
-        policy_ver = {"source": "config", "path": "OPA/inline"}
-        details = {"type": type, "uri": uri, "crs": crs, "policy": policy_ver}
+        policy_ver = {"source": "config", "path": "OPA/inline", "version": policy_version}
+        # Record export hash for traceability (best-effort)
+        export_hash = None
+        try:
+            from ..utils.hash import sha256_file
+            local_path = locals().get('out_laz') or locals().get('out_gltf') or locals().get('out_webm') or locals().get('index_local') or locals().get('zip_path')
+            if local_path:
+                export_hash = sha256_file(local_path)
+        except Exception:
+            export_hash = None
+        details = {"type": type, "uri": uri, "crs": crs, "policy": policy_ver, **({"sha256": export_hash} if export_hash else {})}
         sig = sign_dict({"scene_id": str(scene_id), "type": type, "crs": crs})
         if sig:
             details["signature"] = sig
         db.add(AuditLog(scene_id=scene_id, action="export_allowed", details=details))
+        try:
+            write_decision("export_allowed", {"scene_id": str(scene_id), "type": type, "crs": crs, "uri": uri})
+        except Exception:
+            pass
         db.commit()
         EXPORT_COUNT.labels(SERVICE_NAME, type, "allowed").inc()
         try:
