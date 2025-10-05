@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     opa_policy_path: str | None = "configs/opa/policy.yaml"
 
     # Orchestrator
-    orchestrator: str = "stub"  # one of: stub, ray
+    orchestrator: str = "stub"  # one of: stub, ray, langgraph
 
     class Config:
         env_prefix = "ROBOROUTER_"

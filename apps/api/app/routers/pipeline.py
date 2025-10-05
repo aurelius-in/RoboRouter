@@ -21,6 +21,7 @@ from ..mlflow_stub import log_metrics as mlflow_log_metrics
 from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
 from ..orchestrator.ray_orch import RayOrchestrator
+from ..orchestrator.langgraph_orch import LangGraphOrchestrator
 from ..config import settings
 from ..utils.settings_override import temporary_settings
 from ..models import AuditLog
@@ -34,7 +35,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
     steps = steps or ["registration"]
     db: Session = SessionLocal()
     try:
-        orch = RayOrchestrator() if settings.orchestrator == "ray" else OrchestratorStub()
+        orch = OrchestratorStub()
+        if settings.orchestrator == "ray":
+            orch = RayOrchestrator()
+        elif settings.orchestrator == "langgraph":
+            orch = LangGraphOrchestrator()
         with __import__('contextlib').ExitStack() as _:
             # Record stub plan (no behavior change)
             out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": orch.run(str(scene_id), steps)}
