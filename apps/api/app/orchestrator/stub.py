@@ -17,6 +17,14 @@ class OrchestratorStub:
     def run(self, scene_id: str, steps: List[str]) -> Dict[str, Any]:  # type: ignore[type-arg]
         with span("orchestrator.plan"):
             plan = self.plan(steps)
-        return {"engine": "stub", "plan": plan}
+        # Stub lineage and retry metadata
+        lineage = {"scene_id": scene_id, "steps": plan, "retries": {s: 0 for s in plan}}
+        return {"engine": "stub", "plan": plan, "lineage": lineage}
+
+    def cancel(self, run_id: str) -> Dict[str, Any]:
+        return {"run_id": run_id, "status": "cancelled"}
+
+    def resume(self, run_id: str) -> Dict[str, Any]:
+        return {"run_id": run_id, "status": "resumed"}
 
 

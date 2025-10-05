@@ -21,9 +21,13 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
-    with span("change_detection.stub"):
-        # Stub: pretend we detected changes in 3 classes
-        mask_stats = {"added": 42, "removed": 17, "moved": 5}
+    if settings.change_use_learned:
+        with span("change_detection.learned_stub"):
+            mask_stats = {"added": 30, "removed": 12, "moved": 7}
+    else:
+        with span("change_detection.stub"):
+            # Stub: pretend we detected changes in 3 classes
+            mask_stats = {"added": 42, "removed": 17, "moved": 5}
     change_mask_path = str(Path(out_dir) / "change_mask_summary.json")
     with open(change_mask_path, "w", encoding="utf-8") as f:
         json.dump({"mask_stats": mask_stats, "voxel_size_m": settings.change_voxel_size_m}, f)

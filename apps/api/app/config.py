@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     change_voxel_size_m: float = 0.10
     change_min_points_per_voxel: int = 3
 
+    # Registration (Open3D) defaults
+    reg_voxel_size_m: float = 0.05
+    reg_fgr_max_corr_mult: float = 1.5
+    reg_icp_max_iter: int = 50
+
+    # Segmentation (MinkowskiEngine/KPConv)
+    seg_use_minkowski: bool = False
+    seg_model_path: str | None = None
+
+    # Learned change detection
+    change_use_learned: bool = False
+
+    # Policy / OPA
+    opa_policy_path: str | None = None
+
     class Config:
         env_prefix = "ROBOROUTER_"
 
