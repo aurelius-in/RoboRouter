@@ -23,6 +23,7 @@ from ..orchestrator.stub import OrchestratorStub
 from ..orchestrator.ray_orch import RayOrchestrator
 from ..config import settings
 from ..utils.settings_override import temporary_settings
+from ..models import AuditLog
 
 
 router = APIRouter(tags=["Pipeline"])
@@ -249,6 +250,12 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         except Exception:
             pass
 
+        # Audit the pipeline run summary
+        try:
+            db.add(AuditLog(scene_id=scene_id, action="pipeline_run", details={"steps": steps, "metrics": out.get("metrics", {})}))
+            db.commit()
+        except Exception:
+            pass
         return out
     finally:
         db.close()

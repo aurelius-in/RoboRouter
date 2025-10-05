@@ -83,6 +83,12 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 zip_path = _shutil.make_archive(zip_base, 'zip', out_dir)
                 obj = f"exports/potree/{scene_id}.zip"
                 upload_file(client, "roborouter-processed", obj, zip_path, content_type="application/zip")
+                # Upload manifest alongside
+                try:
+                    manifest_obj = f"exports/potree/{scene_id}.manifest.json"
+                    upload_file(client, "roborouter-processed", manifest_obj, f"{out_dir}/manifest.json", content_type="application/json")
+                except Exception:
+                    pass
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "laz":
                 out_laz = f"{td}/{scene_id}.laz"

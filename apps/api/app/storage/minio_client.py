@@ -31,6 +31,15 @@ def upload_file(client: Minio, bucket: str, object_name: str, file_path: str, *,
     client.fput_object(bucket, object_name, file_path, content_type=ct)
 
 
+def upload_file_stream(client: Minio, bucket: str, object_name: str, file_path: str, *, content_type: Optional[str] = None, part_size: int = 5 * 1024 * 1024) -> None:
+    ensure_bucket(client, bucket)
+    guessed, _ = mimetypes.guess_type(object_name)
+    ct = content_type or guessed or "application/octet-stream"
+    size = Path(file_path).stat().st_size
+    with open(file_path, "rb") as data:
+        client.put_object(bucket, object_name, data, length=size, part_size=part_size, content_type=ct)
+
+
 def presigned_get_url(
     client: Minio,
     bucket: str,
