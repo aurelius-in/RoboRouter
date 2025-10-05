@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..db import Base, engine, get_db
 from ..models import Artifact, Metric, Scene
-from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count
+from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count, get_bounds_and_srs
 from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file, download_file
 from ..utils.crs import validate_crs
@@ -91,6 +91,15 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
     if has_pdal():
         processed_local = output_path
     count_out = get_point_count(processed_local) if processed_local else None
+    bounds_in, srs_in = (get_bounds_and_srs(payload.source_uri) if has_pdal() else (None, None))
+    bounds_out, srs_out = (get_bounds_and_srs(processed_local) if (has_pdal() and processed_local) else (None, None))
+    # Validate reprojection when available (best-effort string contains)
+    reprojection_ok = 0.0
+    try:
+        if isinstance(srs_out, str) and payload.crs.split(":")[0] in srs_out or payload.crs in (srs_out or ""):
+            reprojection_ok = 1.0
+    except Exception:
+        reprojection_ok = 0.0
     completeness = (float(count_out) / float(count_in)) if (count_in and count_out and count_in > 0) else 0.0
     density = float(count_out) if count_out else 0.0
     metrics = {
@@ -98,6 +107,7 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         "point_count_out": float(count_out) if count_out else 0.0,
         "density": density,
         "completeness": completeness,
+        "reprojection_ok": reprojection_ok,
     }
     try:
         metrics["ingested_sha256"] = float(int(sha256_file(output_path), 16) % 1e6)
