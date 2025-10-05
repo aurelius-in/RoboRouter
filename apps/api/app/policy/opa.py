@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 
-def _load_policy() -> tuple[set[str], set[str], Optional[str]]:
+def _load_policy() -> tuple[set[str], set[str], Optional[str], Optional[str]]:
     """Load dynamic policy from a JSON file if configured.
 
     Expected JSON schema (minimal):
@@ -21,6 +21,7 @@ def _load_policy() -> tuple[set[str], set[str], Optional[str]]:
     crs_over = None
     path = settings.opa_policy_path
     version: Optional[str] = None
+    policy_path_str: Optional[str] = None
     if path:
         p = Path(path)
         if p.exists():
@@ -36,9 +37,26 @@ def _load_policy() -> tuple[set[str], set[str], Optional[str]]:
                     c = data.get("allowed_crs")
                     if isinstance(c, list):
                         crs_over = {str(x).upper() for x in c}
+                    policy_path_str = str(p)
             except Exception:
-                pass
-    return types, (crs_over or set()), version
+                # Try YAML as a fallback
+                try:
+                    import yaml  # type: ignore
+                    data = yaml.safe_load(p.read_text(encoding="utf-8"))
+                    if isinstance(data, dict):
+                        v = data.get("version")
+                        if isinstance(v, (str, int, float)):
+                            version = str(v)
+                        t = data.get("allowed_export_types")
+                        if isinstance(t, list):
+                            types = {str(x).lower() for x in t}
+                        c = data.get("allowed_crs")
+                        if isinstance(c, list):
+                            crs_over = {str(x).upper() for x in c}
+                        policy_path_str = str(p)
+                except Exception:
+                    pass
+    return types, (crs_over or set()), version, policy_path_str
 
 
 def evaluate_export_policy(policy_input: Dict[str, Any]) -> Tuple[bool, str]:

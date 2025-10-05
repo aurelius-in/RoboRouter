@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
 from ..policy.opa import evaluate_export_policy, _load_policy
+from ..utils.decision_log import write_decision
 from ..utils.crs import validate_crs
 from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
 from ..exporters.exporters import export_potree, export_laz, export_gltf, export_webm
@@ -37,6 +38,10 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         if not allowed:
             db.add(AuditLog(scene_id=scene_id, action="export_blocked", details={"type": type, "reason": reason, "policy_version": policy_version}))
             db.commit()
+            try:
+                write_decision("export_blocked", {"scene_id": str(scene_id), "type": type, "crs": crs, "reason": reason})
+            except Exception:
+                pass
             EXPORT_COUNT.labels(SERVICE_NAME, type, "blocked").inc()
             raise HTTPException(status_code=403, detail=reason)
 
@@ -108,6 +113,10 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         if sig:
             details["signature"] = sig
         db.add(AuditLog(scene_id=scene_id, action="export_allowed", details=details))
+        try:
+            write_decision("export_allowed", {"scene_id": str(scene_id), "type": type, "crs": crs, "uri": uri})
+        except Exception:
+            pass
         db.commit()
         EXPORT_COUNT.labels(SERVICE_NAME, type, "allowed").inc()
         try:

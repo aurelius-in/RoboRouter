@@ -20,6 +20,8 @@ from ..utils.hash import sha256_file
 from ..mlflow_stub import log_metrics as mlflow_log_metrics
 from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
+from ..orchestrator.ray_orch import RayOrchestrator
+from ..config import settings
 
 
 router = APIRouter(tags=["Pipeline"])
@@ -30,7 +32,7 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
     steps = steps or ["registration"]
     db: Session = SessionLocal()
     try:
-        orch = OrchestratorStub()
+        orch = RayOrchestrator() if settings.orchestrator == "ray" else OrchestratorStub()
         with __import__('contextlib').ExitStack() as _:
             # Record stub plan (no behavior change)
             out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": orch.run(str(scene_id), steps)}
