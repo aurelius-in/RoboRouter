@@ -54,6 +54,7 @@ class Settings(BaseSettings):
 
     # Orchestrator
     orchestrator: str = "stub"  # one of: stub, ray, langgraph
+    orchestrator_max_retries: int = 1
 
     class Config:
         env_prefix = "ROBOROUTER_"

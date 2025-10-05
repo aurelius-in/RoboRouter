@@ -43,7 +43,8 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             orch = LangGraphOrchestrator()
         with __import__('contextlib').ExitStack() as _:
             # Record stub plan (no behavior change)
-            out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": orch.run(str(scene_id), steps)}
+            plan = orch.run(str(scene_id), steps)
+            out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": plan, "retries": int(getattr(settings, 'orchestrator_max_retries', 1)), "run_id": f"run_{scene_id}"}
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")

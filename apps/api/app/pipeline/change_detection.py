@@ -8,6 +8,7 @@ from typing import Dict
 from ..config import settings
 from ..utils.change import format_delta_table
 from ..utils.tracing import span
+from .change_learned import run_learned_change
 
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,7 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str, po
     if settings.change_use_learned:
         with span("change_detection.learned_stub"):
             d = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
-            # Scale counts with drift for illustration
-            base = {"added": 30, "removed": 12, "moved": 7}
-            mask_stats = {k: int(v * (1.0 + d)) for k, v in base.items()}
+            mask_stats = run_learned_change(baseline_path, current_path, pose_drift=d)
             used_learned = 1
     else:
         with span("change_detection.stub"):
