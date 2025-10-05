@@ -12,7 +12,7 @@ from ..db import Base, engine, get_db
 from ..models import Artifact, Metric, Scene
 from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count
 from ..schemas import IngestRequest, IngestResponse
-from ..storage.minio_client import get_minio_client, upload_file
+from ..storage.minio_client import get_minio_client, upload_file, download_file
 from ..utils.crs import validate_crs
 from ..utils.hash import sha256_file
 
@@ -38,7 +38,17 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
     artifact_ids: list[uuid.UUID] = []
 
     with tempfile.TemporaryDirectory() as td:
-        input_path = payload.source_uri  # For now assume local path; S3 support later
+        input_path = payload.source_uri
+        # Allow s3://bucket/key source
+        if input_path.startswith("s3://"):
+            try:
+                bucket = input_path.split("/", 3)[2]
+                key = input_path.split("/", 3)[3]
+                local_in = str(Path(td) / Path(key).name)
+                download_file(client, bucket, key, local_in)
+                input_path = local_in
+            except Exception:
+                raise HTTPException(status_code=400, detail="Failed to download S3 source")
         if not Path(input_path).exists():
             raise HTTPException(status_code=400, detail="Source file not found")
         output_path = str(Path(td) / f"{scene.id}.laz")

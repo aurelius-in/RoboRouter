@@ -46,3 +46,8 @@ def presigned_get_url(
     )
 
 
+def download_file(client: Minio, bucket: str, object_name: str, dest_path: str) -> None:
+    Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+    client.fget_object(bucket, object_name, dest_path)
+
+
