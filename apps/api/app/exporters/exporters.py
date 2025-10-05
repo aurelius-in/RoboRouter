@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from .base import ensure_parent, has_tool, run_cmd
 
@@ -28,6 +29,17 @@ def export_potree(input_laz: str, out_dir: str) -> str:
 			"<html><body><h3>Potree export failed</h3><p>Placeholder created.</p></body></html>",
 			encoding="utf-8",
 		)
+	# Write a tiny manifest.json for UI consumers (file list + sizes)
+	try:
+		files = []
+		for p in Path(out_dir).rglob("*"):
+			if p.is_file():
+				rel = str(p.relative_to(out_dir))
+				size = p.stat().st_size
+				files.append({"path": rel, "size": int(size)})
+		(Path(out_dir) / "manifest.json").write_text(json.dumps({"files": files}), encoding="utf-8")
+	except Exception:
+		pass
 	return out_dir
 
 
