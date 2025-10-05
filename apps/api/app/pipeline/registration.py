@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from ..utils.tracing import span
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +41,8 @@ def _register_with_open3d(input_path: str, output_path: str) -> RegistrationResu
     target_full = source_full
 
     # Parameters (could be surfaced via config)
-    voxel_size = 0.05
-    distance_threshold_fgr = voxel_size * 1.5
+    voxel_size = float(settings.reg_voxel_size_m)
+    distance_threshold_fgr = voxel_size * float(settings.reg_fgr_max_corr_mult)
     distance_threshold_icp = voxel_size * 0.7
 
     def preprocess(pc: o3d.geometry.PointCloud) -> tuple[o3d.geometry.PointCloud, o3d.pipelines.registration.Feature]:
@@ -75,7 +76,7 @@ def _register_with_open3d(input_path: str, output_path: str) -> RegistrationResu
         distance_threshold_icp,
         init,
         o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50),
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=int(settings.reg_icp_max_iter)),
     )
 
     transform = icp_result.transformation if icp_result and icp_result.transformation is not None else None
