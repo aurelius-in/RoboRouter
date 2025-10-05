@@ -122,6 +122,16 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
     except Exception:
         pass
     metrics["used_pdal"] = 1.0 if used_pdal else 0.0
+    # Simple dedupe metric: if an ingested artifact with same SHA exists
+    try:
+        existing = db.execute(
+            select(Metric).where(Metric.name == "ingested_sha256", Metric.scene_id != scene.id)
+        ).scalars().all()
+        cur = int(sha256_file(output_path), 16) % 1_000_000
+        hit = any(int(m.value) == cur for m in existing)
+        metrics["dedupe_hit"] = 1.0 if hit else 0.0
+    except Exception:
+        metrics["dedupe_hit"] = 0.0
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
     db.commit()

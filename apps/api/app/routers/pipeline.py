@@ -22,6 +22,8 @@ from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
 from ..orchestrator.ray_orch import RayOrchestrator
 from ..config import settings
+from ..utils.settings_override import temporary_settings
+from ..models import AuditLog
 
 
 router = APIRouter(tags=["Pipeline"])
@@ -40,8 +42,15 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
 
+        # Apply config overrides temporarily
+        if config_overrides:
+            with temporary_settings(settings, config_overrides):
+                thr = load_thresholds()
+        else:
+            thr = load_thresholds()
+
         # out already declared with orchestrator stub
-        thr = load_thresholds()
+        
 
         if "registration" in steps:
             _t0 = time.time()
@@ -241,6 +250,12 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         except Exception:
             pass
 
+        # Audit the pipeline run summary
+        try:
+            db.add(AuditLog(scene_id=scene_id, action="pipeline_run", details={"steps": steps, "metrics": out.get("metrics", {})}))
+            db.commit()
+        except Exception:
+            pass
         return out
     finally:
         db.close()

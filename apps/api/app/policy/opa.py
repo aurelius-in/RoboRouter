@@ -56,6 +56,31 @@ def _load_policy() -> tuple[set[str], set[str], Optional[str], Optional[str]]:
                         policy_path_str = str(p)
                 except Exception:
                     pass
+    # If path is a directory, try policy.json or policy.yaml inside
+    try:
+        pdir = Path(path)
+        if pdir.exists() and pdir.is_dir():
+            for cand in (pdir / "policy.json", pdir / "policy.yaml", pdir / "policies.yaml"):
+                if cand.exists():
+                    try:
+                        import yaml  # type: ignore
+                        data = yaml.safe_load(cand.read_text(encoding="utf-8"))
+                        if isinstance(data, dict):
+                            v = data.get("version")
+                            if isinstance(v, (str, int, float)):
+                                version = str(v)
+                            t = data.get("allowed_export_types")
+                            if isinstance(t, list):
+                                types = {str(x).lower() for x in t}
+                            c = data.get("allowed_crs")
+                            if isinstance(c, list):
+                                crs_over = {str(x).upper() for x in c}
+                            policy_path_str = str(cand)
+                            break
+                    except Exception:
+                        pass
+    except Exception:
+        pass
     return types, (crs_over or set()), version, policy_path_str
 
 
