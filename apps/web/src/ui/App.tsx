@@ -38,6 +38,31 @@ export const App: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
+  // Keyboard shortcuts: s(toggle stats), /(focus search), [/] adjust scene page size, r(refresh scenes), a(refresh artifacts), u(refresh runs)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return; // don't hijack typing in inputs
+      if (e.key === 's') {
+        setShowStats(v => !v)
+      } else if (e.key === '/') {
+        const el = document.getElementById('rr_scene_search') as HTMLInputElement | null
+        if (el) { el.focus(); e.preventDefault() }
+      } else if (e.key === '[') {
+        const v = Math.max(10, scenesLimit - 10); setScenesLimit(v); try { localStorage.setItem('scenes_limit', String(v)) } catch {}
+      } else if (e.key === ']') {
+        const v = Math.min(200, scenesLimit + 10); setScenesLimit(v); try { localStorage.setItem('scenes_limit', String(v)) } catch {}
+      } else if (e.key === 'r') {
+        refreshScenes(0)
+      } else if (e.key === 'a') {
+        refreshArtifacts(0)
+      } else if (e.key === 'u') {
+        refreshRuns(0)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [scenesLimit, refreshScenes, refreshArtifacts, refreshRuns])
+
   const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
   const [scenesOffset, setScenesOffset] = useState<number>(0)
   const [scenesLimit, setScenesLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('scenes_limit')||'50')||50 } catch { return 50 } })
@@ -414,7 +439,7 @@ export const App: React.FC = () => {
         <h3>Artifacts</h3>
         {sceneId && <button onClick={()=>refreshArtifacts(0)}>Refresh</button>}
         <span style={{ marginLeft: 8 }}>
-          <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>{ setSceneQuery(e.target.value); try { localStorage.setItem('scene_query', e.target.value) } catch {} }} />
+          <input id="rr_scene_search" placeholder="search source_uri" value={sceneQuery} onChange={(e)=>{ setSceneQuery(e.target.value); try { localStorage.setItem('scene_query', e.target.value) } catch {} }} />
           <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
           <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const csv = await getScenesCsv({ q: sceneQuery }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'scenes.csv'; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Scenes CSV failed') } }}>Download Scenes CSV</button>
         </span>
