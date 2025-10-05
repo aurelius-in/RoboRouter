@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..utils.tracing import span
+from ..config import settings
 
 
 class LangGraphOrchestrator:
@@ -27,7 +28,14 @@ class LangGraphOrchestrator:
             "nodes": [{"id": s, "type": s, "status": "planned"} for s in plan],
             "edges": [{"from": plan[i], "to": plan[i+1]} for i in range(len(plan)-1)],
         }
-        return {"engine": engine, "plan": plan, "lineage": lineage, "cancellable": True, "resumable": True}
+        return {
+            "engine": engine,
+            "plan": plan,
+            "lineage": lineage,
+            "cancellable": True,
+            "resumable": True,
+            "retries": int(getattr(settings, "orchestrator_max_retries", 1)),
+        }
 
     def cancel(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
         return {"run_id": run_id, "status": "cancelled"}

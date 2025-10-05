@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from ..utils.tracing import span
+from ..config import settings
 
 
 class RayOrchestrator:
@@ -28,7 +29,14 @@ class RayOrchestrator:
         with span(f"orchestrator.plan.{engine}"):
             plan = self.plan(steps)
         lineage = {"scene_id": scene_id, "steps": plan, "engine": engine}
-        return {"engine": engine, "plan": plan, "lineage": lineage, "cancellable": True, "resumable": True}
+        return {
+            "engine": engine,
+            "plan": plan,
+            "lineage": lineage,
+            "cancellable": True,
+            "resumable": True,
+            "retries": int(getattr(settings, "orchestrator_max_retries", 1)),
+        }
 
     def cancel(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
         # Stub: real impl would signal Ray tasks
