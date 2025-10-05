@@ -10,6 +10,7 @@ import numpy as np
 from ..utils.math import binary_entropy
 from ..config import settings
 from ..utils.tracing import span
+from .kpconv import has_minkowski, load_kpconv_model, run_kpconv_inference
 
 
 logger = logging.getLogger(__name__)
@@ -25,23 +26,20 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | i
 
     used_minkowski = 0
     used_cuda = 0
-    if settings.seg_use_minkowski and settings.seg_model_path:
-        with span("segmentation.minkowski_stub"):
+    if settings.seg_use_minkowski and settings.seg_model_path and has_minkowski():
+        with span("segmentation.kpconv"):
             try:
                 import torch  # type: ignore
                 used_cuda = 1 if torch.cuda.is_available() else 0
-                __import__("MinkowskiEngine")  # type: ignore
-                used_minkowski = 1
             except Exception:
-                used_minkowski = 0
-            # Placeholder: treat as deterministic pseudo-preds when enabled
-            rng = np.random.default_rng(123)
+                used_cuda = 0
+            used_minkowski = 1
             num_points = 2000
             num_classes = int(getattr(settings, "seg_num_classes", 5))
-            logits = rng.standard_normal((num_points, num_classes))
-            probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
-            classes = np.argmax(probs, axis=1)
-            confidence = np.max(probs, axis=1)
+            model = load_kpconv_model(settings.seg_model_path)
+            out = run_kpconv_inference(model, num_points, num_classes)
+            classes = out["classes"]
+            confidence = out["confidence"]
             entropy = np.mean(binary_entropy(confidence))
     else:
         with span("segmentation.stub"):
