@@ -189,6 +189,8 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 db.add(Metric(scene_id=scene_id, name="change_precision", value=float(cd_out["precision"])) )  # type: ignore[index]
                 db.add(Metric(scene_id=scene_id, name="change_recall", value=float(cd_out["recall"])) )  # type: ignore[index]
                 db.add(Metric(scene_id=scene_id, name="change_f1", value=float(cd_out["f1"])) )  # type: ignore[index]
+                if "drift" in cd_out:
+                    db.add(Metric(scene_id=scene_id, name="change_drift", value=float(cd_out["drift"])) )  # type: ignore[index]
                 db.commit()
                 for a in (art_mask, art_delta):
                     db.refresh(a)
@@ -198,6 +200,8 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     "change_recall": float(cd_out["recall"]),      # type: ignore[index]
                     "change_f1": float(cd_out["f1"]),              # type: ignore[index]
                 })
+                if "drift" in cd_out:
+                    out["metrics"]["change_drift"] = float(cd_out["drift"])  # type: ignore[index]
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
@@ -208,6 +212,7 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                     "change_precision": float(out["metrics"]["change_precision"]),
                     "change_recall": float(out["metrics"]["change_recall"]),
                     "change_f1": float(out["metrics"]["change_f1"]),
+                    **({"change_drift": float(out["metrics"]["change_drift"])} if "change_drift" in out["metrics"] else {}),
                 })
             except Exception:
                 pass
