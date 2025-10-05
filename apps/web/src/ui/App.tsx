@@ -106,6 +106,8 @@ export const App: React.FC = () => {
   const [runReg, setRunReg] = useState<boolean>(true)
   const [runSeg, setRunSeg] = useState<boolean>(true)
   const [runChg, setRunChg] = useState<boolean>(true)
+  const [runId, setRunId] = useState<string>('')
+  const [runRetries, setRunRetries] = useState<number>(0)
 
   async function onRunPipeline() {
     if (!sceneId) return
@@ -116,7 +118,11 @@ export const App: React.FC = () => {
     setStatus(`Running ${steps.join(' → ')} ...`)
     const resp = await runPipeline(sceneId, steps)
     setOrchestratorPlan(resp?.orchestrator?.plan ?? null)
-    if (resp?.run_id) setStatus(s=> `${s} run_id=${resp.run_id} retries=${resp.retries ?? 0}`)
+    if (resp?.run_id) {
+      setRunId(resp.run_id)
+      setRunRetries(Number(resp?.retries ?? 0))
+      setStatus(s=> `${s} run_id=${resp.run_id} retries=${resp.retries ?? 0}`)
+    }
     setStatus('Done.')
     try {
       const sc = await getScene(sceneId)
@@ -356,6 +362,13 @@ export const App: React.FC = () => {
             <label><input type="checkbox" checked={runChg} onChange={(e)=>setRunChg(e.target.checked)} /> change</label>
           </div>
           <button style={{ marginTop: 4 }} onClick={onRunPipeline}>Run</button>
+          {runId && (
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#555' }}>
+              run_id={runId} retries={runRetries}
+              <button style={{ marginLeft: 8 }} onClick={async()=>{ try { await (await import('../api/client')).pipelineCancel(runId); setStatus('Cancelled') } catch { setStatus('Cancel failed') } }}>Cancel</button>
+              <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await (await import('../api/client')).pipelineResume(runId); setStatus('Resumed') } catch { setStatus('Resume failed') } }}>Resume</button>
+            </span>
+          )}
         </div>
 
         <div>
@@ -466,6 +479,7 @@ export const App: React.FC = () => {
             &nbsp; seg_ms={String(metrics.find(m=>m.name==='segmentation_ms')?.value || 0)}
             &nbsp; chg_ms={String(metrics.find(m=>m.name==='change_detection_ms')?.value || 0)}
             &nbsp; drift={String(metrics.find(m=>m.name==='change_drift')?.value ?? '')}
+            &nbsp; learned={String(metrics.find(m=>m.name==='change_used_learned')?.value ?? '')}
             <div style={{ marginTop: 4 }}>
               <b>Gates:</b>
               &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
