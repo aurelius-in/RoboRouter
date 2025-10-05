@@ -28,7 +28,7 @@ def policy_check(type: str | None = None, export_type: str | None = None, crs: s
             except Exception:
                 sid = None
             if sid is not None:
-                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason}))
+                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or '')}))
                 db.commit()
         finally:
             db.close()
@@ -50,7 +50,7 @@ def policy_check_post(payload: Dict[str, Any]) -> Dict[str, Any]:  # type: ignor
             except Exception:
                 sid = None
             if sid is not None:
-                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason}))
+                db.add(AuditLog(scene_id=sid, action="policy_check", details={"type": t, "crs": c, "allowed": allowed, "reason": reason, "policy_file": str(getattr(__import__('os'), 'getenv')('ROBOROUTER_OPA_POLICY') or '')}))
                 db.commit()
         finally:
             db.close()
