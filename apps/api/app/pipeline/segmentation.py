@@ -37,7 +37,7 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | i
             # Placeholder: treat as deterministic pseudo-preds when enabled
             rng = np.random.default_rng(123)
             num_points = 2000
-            num_classes = 5
+            num_classes = int(getattr(settings, "seg_num_classes", 5))
             logits = rng.standard_normal((num_points, num_classes))
             probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
             classes = np.argmax(probs, axis=1)
@@ -47,7 +47,7 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | i
         with span("segmentation.stub"):
         # Pretend we made predictions for N points
             num_points = 1000
-            num_classes = 5
+            num_classes = int(getattr(settings, "seg_num_classes", 5))
             logits = np.random.randn(num_points, num_classes)
             probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
             classes = np.argmax(probs, axis=1)

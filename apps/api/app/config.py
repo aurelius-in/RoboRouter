@@ -43,9 +43,11 @@ class Settings(BaseSettings):
     # Segmentation (MinkowskiEngine/KPConv)
     seg_use_minkowski: bool = False
     seg_model_path: str | None = None
+    seg_num_classes: int = 5
 
     # Learned change detection
     change_use_learned: bool = False
+    change_pose_drift_default: float = 0.05
 
     # Policy / OPA
     opa_policy_path: str | None = "configs/opa/policy.yaml"

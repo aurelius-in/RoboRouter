@@ -12,7 +12,7 @@ from ..db import Base, engine, get_db
 from ..models import Artifact, Metric, Scene, AuditLog
 from ..pipeline.pdal import build_ingest_pipeline, has_pdal, run_pipeline, get_point_count, get_bounds_and_srs
 from ..schemas import IngestRequest, IngestResponse
-from ..storage.minio_client import get_minio_client, upload_file, download_file
+from ..storage.minio_client import get_minio_client, upload_file, upload_file_stream, download_file
 from ..utils.crs import validate_crs
 from ..utils.hash import sha256_file
 
@@ -75,7 +75,14 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
             Path(output_path).touch()
 
         object_name = f"ingest/{scene.id}.laz"
-        upload_file(client, settings.minio_bucket_processed, object_name, output_path)
+        # Use streaming for large files
+        try:
+            if Path(output_path).stat().st_size > 64 * 1024 * 1024:
+                upload_file_stream(client, settings.minio_bucket_processed, object_name, output_path)
+            else:
+                upload_file(client, settings.minio_bucket_processed, object_name, output_path)
+        except Exception:
+            upload_file(client, settings.minio_bucket_processed, object_name, output_path)
 
         art = Artifact(scene_id=scene.id, type="ingested", uri=f"s3://{settings.minio_bucket_processed}/{object_name}")
         db.add(art)

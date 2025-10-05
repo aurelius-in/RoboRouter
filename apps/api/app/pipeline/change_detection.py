@@ -13,7 +13,7 @@ from ..utils.tracing import span
 logger = logging.getLogger(__name__)
 
 
-def run_change_detection(baseline_path: str, current_path: str, out_dir: str) -> Dict[str, str | float]:
+def run_change_detection(baseline_path: str, current_path: str, out_dir: str, pose_drift: float | None = None) -> Dict[str, str | float]:
     """Voxel-diff change detection stub.
 
     Generates a tiny change mask summary and a delta table JSON.
@@ -23,7 +23,10 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
 
     if settings.change_use_learned:
         with span("change_detection.learned_stub"):
-            mask_stats = {"added": 30, "removed": 12, "moved": 7}
+            d = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
+            # Scale counts with drift for illustration
+            base = {"added": 30, "removed": 12, "moved": 7}
+            mask_stats = {k: int(v * (1.0 + d)) for k, v in base.items()}
     else:
         with span("change_detection.stub"):
             # Stub: pretend we detected changes in 3 classes
