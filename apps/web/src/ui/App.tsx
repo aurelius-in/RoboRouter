@@ -536,7 +536,7 @@ export const App: React.FC = () => {
               {runs.map(r => {
                 const ok = r.overall_pass ? '✅' : '❌'
                 return (
-                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')}</li>
+                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')} drift={String((r.change_drift ?? ''))}</li>
                 )
               })}
             </ul>

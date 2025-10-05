@@ -40,6 +40,7 @@ def list_runs(limit: int = 50, offset: int = 0, only_failed: bool = False, only_
                     "rmse": m.get("rmse"),
                     "miou": m.get("miou"),
                     "change_f1": m.get("change_f1"),
+                    "change_drift": m.get("change_drift"),
                     "registration_pass": reg_pass,
                     "segmentation_pass": seg_pass,
                     "change_detection_pass": chg_pass,
@@ -59,7 +60,7 @@ def runs_csv(limit: int = 1000, offset: int = 0, only_failed: bool = False, only
         scenes = db.execute(
             select(Scene).order_by(Scene.created_at.desc()).offset(offset).limit(min(5000, max(1, limit)))
         ).scalars().all()
-        rows = ["id,created_at,overall_pass,rmse,miou,change_f1"]
+        rows = ["id,created_at,overall_pass,rmse,miou,change_f1,change_drift"]
         for s in scenes:
             metrics = db.execute(select(Metric).where(Metric.scene_id == s.id)).scalars().all()
             m = {mm.name: float(mm.value) for mm in metrics}
@@ -72,7 +73,7 @@ def runs_csv(limit: int = 1000, offset: int = 0, only_failed: bool = False, only
             if only_passed and not overall_pass:
                 continue
             rows.append(
-                f"{s.id},{s.created_at.isoformat()},{int(overall_pass)},{m.get('rmse','')},{m.get('miou','')},{m.get('change_f1','')}"
+                f"{s.id},{s.created_at.isoformat()},{int(overall_pass)},{m.get('rmse','')},{m.get('miou','')},{m.get('change_f1','')},{m.get('change_drift','')}"
             )
         return "\n".join(rows) + "\n"
     finally:
