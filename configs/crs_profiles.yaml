@@ -1,3 +1,7 @@
+default:
+  - EPSG:3857
+  - EPSG:4978
+  - EPSG:26915
 profiles:
   AEC:
     crs: EPSG:3857

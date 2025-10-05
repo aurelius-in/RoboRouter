@@ -130,6 +130,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 art_ent = Artifact(scene_id=scene_id, type="segmentation_entropy", uri=f"s3://roborouter-processed/{ent_obj}")
                 db.add_all([art_classes, art_conf, art_ent])
                 db.add(Metric(scene_id=scene_id, name="miou", value=float(seg_out["miou"])) )  # type: ignore[index]
+                if "seg_used_minkowski" in seg_out:
+                    db.add(Metric(scene_id=scene_id, name="seg_used_minkowski", value=float(seg_out["seg_used_minkowski"])) )  # type: ignore[index]
+                if "seg_used_cuda" in seg_out:
+                    db.add(Metric(scene_id=scene_id, name="seg_used_cuda", value=float(seg_out["seg_used_cuda"])) )  # type: ignore[index]
                 db.commit()
                 for a in (art_classes, art_conf, art_ent):
                     db.refresh(a)

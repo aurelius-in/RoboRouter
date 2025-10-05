@@ -108,7 +108,16 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
         db.add(art)
         # Include a policy "version" hint in audit to support decision provenance
         policy_ver = {"source": "config", "path": "OPA/inline", "version": policy_version}
-        details = {"type": type, "uri": uri, "crs": crs, "policy": policy_ver}
+        # Record export hash for traceability (best-effort)
+        export_hash = None
+        try:
+            from ..utils.hash import sha256_file
+            local_path = locals().get('out_laz') or locals().get('out_gltf') or locals().get('out_webm') or locals().get('index_local') or locals().get('zip_path')
+            if local_path:
+                export_hash = sha256_file(local_path)
+        except Exception:
+            export_hash = None
+        details = {"type": type, "uri": uri, "crs": crs, "policy": policy_ver, **({"sha256": export_hash} if export_hash else {})}
         sig = sign_dict({"scene_id": str(scene_id), "type": type, "crs": crs})
         if sig:
             details["signature"] = sig
