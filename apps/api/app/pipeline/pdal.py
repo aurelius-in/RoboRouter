@@ -22,8 +22,20 @@ def build_ingest_pipeline(
     intensity_max: float,
     out_srs: Optional[str] | None = None,
 ) -> Dict:
+    # Reader autodetect for common formats (E57/PLY/LAS/LAZ). Fallback to implicit reader via path string.
+    reader_stage: str | Dict[str, str]
+    lower = input_path.lower()
+    if lower.endswith(".e57"):
+        reader_stage = {"type": "readers.e57", "filename": input_path}
+    elif lower.endswith(".ply"):
+        reader_stage = {"type": "readers.ply", "filename": input_path}
+    elif lower.endswith(".laz") or lower.endswith(".las"):
+        reader_stage = input_path  # LAS/LAZ readers usually autodetected
+    else:
+        reader_stage = input_path
+
     stages = [
-        input_path,
+        reader_stage,
         {"type": "filters.statisticaloutlier", "mean_k": mean_k, "multiplier": stddev_mult},
         {"type": "filters.voxelgrid", "leaf_x": voxel_size, "leaf_y": voxel_size, "leaf_z": voxel_size},
         {"type": "filters.range", "limits": f"Intensity[{intensity_min}:{intensity_max}]"},

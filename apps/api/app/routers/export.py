@@ -100,7 +100,9 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 raise HTTPException(status_code=400, detail="Unsupported export type")
         art = Artifact(scene_id=scene_id, type=f"export_{type}", uri=uri)
         db.add(art)
-        details = {"type": type, "uri": uri, "crs": crs}
+        # Include a policy "version" hint in audit to support decision provenance
+        policy_ver = {"source": "config", "path": "OPA/inline"}
+        details = {"type": type, "uri": uri, "crs": crs, "policy": policy_ver}
         sig = sign_dict({"scene_id": str(scene_id), "type": type, "crs": crs})
         if sig:
             details["signature"] = sig
