@@ -116,6 +116,7 @@ export const App: React.FC = () => {
     setStatus(`Running ${steps.join(' → ')} ...`)
     const resp = await runPipeline(sceneId, steps)
     setOrchestratorPlan(resp?.orchestrator?.plan ?? null)
+    if (resp?.run_id) setStatus(s=> `${s} run_id=${resp.run_id} retries=${resp.retries ?? 0}`)
     setStatus('Done.')
     try {
       const sc = await getScene(sceneId)
@@ -464,6 +465,7 @@ export const App: React.FC = () => {
             &nbsp; reg_ms={String(metrics.find(m=>m.name==='registration_ms')?.value || 0)}
             &nbsp; seg_ms={String(metrics.find(m=>m.name==='segmentation_ms')?.value || 0)}
             &nbsp; chg_ms={String(metrics.find(m=>m.name==='change_detection_ms')?.value || 0)}
+            &nbsp; drift={String(metrics.find(m=>m.name==='change_drift')?.value ?? '')}
             <div style={{ marginTop: 4 }}>
               <b>Gates:</b>
               &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
