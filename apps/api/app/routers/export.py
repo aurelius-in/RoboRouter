@@ -23,7 +23,7 @@ router = APIRouter(tags=["Export"])
 
 
 @router.post("/export")
-def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857", draco: bool = False) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
         scene = db.get(Scene, scene_id)
@@ -98,7 +98,7 @@ def export_artifact(scene_id: uuid.UUID, type: str, crs: str = "EPSG:3857") -> D
                 uri = f"s3://roborouter-processed/{obj}"
             elif type.lower() == "gltf":
                 out_gltf = f"{td}/{scene_id}.gltf"
-                export_gltf(input_laz, out_gltf)
+                export_gltf(input_laz, out_gltf, draco=bool(draco))
                 obj = f"exports/gltf/{scene_id}.gltf"
                 upload_file(client, "roborouter-processed", obj, out_gltf, content_type="model/gltf+json")
                 uri = f"s3://roborouter-processed/{obj}"
