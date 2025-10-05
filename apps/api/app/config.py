@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Policy / OPA
     opa_policy_path: str | None = None
 
+    # Orchestrator
+    orchestrator: str = "stub"  # one of: stub, ray
+
     class Config:
         env_prefix = "ROBOROUTER_"
 

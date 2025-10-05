@@ -33,6 +33,9 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
         json.dump({"mask_stats": mask_stats, "voxel_size_m": settings.change_voxel_size_m}, f)
 
     delta = format_delta_table(mask_stats)
+    # Add simple drift metric (placeholder): magnitude proportional to moved count
+    drift_metric = float(mask_stats.get("moved", 0)) / max(1.0, float(sum(mask_stats.values())))
+    delta["drift"] = drift_metric
     delta_table_path = str(Path(out_dir) / "delta_table.json")
     with open(delta_table_path, "w", encoding="utf-8") as f:
         json.dump(delta, f)
@@ -54,6 +57,7 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "drift": drift_metric,
     }
 
 
