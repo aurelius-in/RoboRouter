@@ -48,7 +48,7 @@ export const App: React.FC = () => {
   const [runsOffset, setRunsOffset] = useState<number>(0)
   const [runsLimit, setRunsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('runs_limit')||'10')||10 } catch { return 10 } })
   const [runsTotal, setRunsTotal] = useState<number>(0)
-  const [sceneQuery, setSceneQuery] = useState<string>('')
+  const [sceneQuery, setSceneQuery] = useState<string>(()=>{ try { return localStorage.getItem('scene_query') || '' } catch { return '' } })
   async function refreshScenes(nextOffset: number = scenesOffset) {
     try {
       const qs = new URLSearchParams({ offset: String(nextOffset), limit: String(scenesLimit) })
@@ -141,11 +141,11 @@ export const App: React.FC = () => {
   const [artifactExpiry, setArtifactExpiry] = useState<number | null>(null)
   const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null; etag?: string | null } | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
-  const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>(()=>{ try { return localStorage.getItem('artifact_type_filter') || '' } catch { return '' } })
   const [artifactsOffset, setArtifactsOffset] = useState<number>(0)
   const [artifactsLimit, setArtifactsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('artifacts_limit')||'20')||20 } catch { return 20 } })
   const [artifactsTotal, setArtifactsTotal] = useState<number>(0)
-  const [exportsOnly, setExportsOnly] = useState<boolean>(false)
+  const [exportsOnly, setExportsOnly] = useState<boolean>(()=>{ try { return localStorage.getItem('exports_only')==='true' } catch { return false } })
   const [exportCrs, setExportCrs] = useState<string>(()=>{ try { return localStorage.getItem('export_crs') || 'EPSG:3857' } catch { return 'EPSG:3857' } })
   const allowedCrsOptions = (health?.cfg?.allowed_crs) || ['EPSG:3857', 'EPSG:4978', 'EPSG:26915']
   const [exportType, setExportType] = useState<string>(()=>{ try { return localStorage.getItem('export_type') || 'potree' } catch { return 'potree' } })
@@ -414,17 +414,17 @@ export const App: React.FC = () => {
         <h3>Artifacts</h3>
         {sceneId && <button onClick={()=>refreshArtifacts(0)}>Refresh</button>}
         <span style={{ marginLeft: 8 }}>
-          <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>setSceneQuery(e.target.value)} />
+          <input placeholder="search source_uri" value={sceneQuery} onChange={(e)=>{ setSceneQuery(e.target.value); try { localStorage.setItem('scene_query', e.target.value) } catch {} }} />
           <button style={{ marginLeft: 6 }} onClick={()=>refreshScenes(0)}>List Scenes</button>
           <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const csv = await getScenesCsv({ q: sceneQuery }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'scenes.csv'; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Scenes CSV failed') } }}>Download Scenes CSV</button>
         </span>
         <button style={{ marginLeft: 8 }} onClick={()=>refreshRuns(0)}>List Runs</button>
         <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const csv = await getRunsCsv({ only_failed: runsOnlyFailed, only_passed: runsOnlyPassed }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'runs.csv'; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Runs CSV failed') } }}>Download Runs CSV</button>
-        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false) }} /> only failed</label>
-        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false) }} /> only passed</label>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyFailed} onChange={(e)=>{ setRunsOnlyFailed(e.target.checked); setRunsOnlyPassed(false); try { localStorage.setItem('runs_only_failed', String(e.target.checked)); localStorage.setItem('runs_only_passed', 'false') } catch {} }} /> only failed</label>
+        <label style={{ marginLeft: 8 }}><input type="checkbox" checked={runsOnlyPassed} onChange={(e)=>{ setRunsOnlyPassed(e.target.checked); setRunsOnlyFailed(false); try { localStorage.setItem('runs_only_passed', String(e.target.checked)); localStorage.setItem('runs_only_failed', 'false') } catch {} }} /> only passed</label>
         <div style={{ marginTop: 8 }}>
-          <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>setArtifactTypeFilter(e.target.value)} />
-          <label style={{ marginLeft: 8 }}><input type="checkbox" checked={exportsOnly} onChange={(e)=> setExportsOnly(e.target.checked) } /> exports only</label>
+          <input placeholder="filter by type (e.g., export_gltf)" value={artifactTypeFilter} onChange={(e)=>{ setArtifactTypeFilter(e.target.value); try { localStorage.setItem('artifact_type_filter', e.target.value) } catch {} }} />
+          <label style={{ marginLeft: 8 }}><input type="checkbox" checked={exportsOnly} onChange={(e)=> { setExportsOnly(e.target.checked); try { localStorage.setItem('exports_only', String(e.target.checked)) } catch {} }} /> exports only</label>
           <button style={{ marginLeft: 8 }} onClick={()=>refreshArtifacts(0)}>Apply</button>
           <button style={{ marginLeft: 6 }} onClick={async()=>{ if(!sceneId) return; try { const csv = await getArtifactsCsv(sceneId, { type: artifactTypeFilter || undefined, exportsOnly }); const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `artifacts_${sceneId}.csv`; document.body.appendChild(a); a.click(); a.remove(); } catch { setStatus('Artifacts CSV failed') } }}>Download Artifacts CSV</button>
         </div>
