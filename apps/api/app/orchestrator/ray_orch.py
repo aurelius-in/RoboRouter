@@ -30,4 +30,11 @@ class RayOrchestrator:
         lineage = {"scene_id": scene_id, "steps": plan, "engine": engine}
         return {"engine": engine, "plan": plan, "lineage": lineage, "cancellable": True, "resumable": True}
 
+    def cancel(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
+        # Stub: real impl would signal Ray tasks
+        return {"run_id": run_id, "status": "cancelled"}
+
+    def resume(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
+        return {"run_id": run_id, "status": "resumed"}
+
 

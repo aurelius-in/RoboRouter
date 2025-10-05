@@ -13,7 +13,7 @@ from ..utils.tracing import span
 logger = logging.getLogger(__name__)
 
 
-def run_change_detection(baseline_path: str, current_path: str, out_dir: str, pose_drift: float | None = None) -> Dict[str, str | float]:
+def run_change_detection(baseline_path: str, current_path: str, out_dir: str, pose_drift: float | None = None) -> Dict[str, str | float | int]:
     """Voxel-diff change detection stub.
 
     Generates a tiny change mask summary and a delta table JSON.
@@ -21,12 +21,14 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str, po
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
+    used_learned = 0
     if settings.change_use_learned:
         with span("change_detection.learned_stub"):
             d = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
             # Scale counts with drift for illustration
             base = {"added": 30, "removed": 12, "moved": 7}
             mask_stats = {k: int(v * (1.0 + d)) for k, v in base.items()}
+            used_learned = 1
     else:
         with span("change_detection.stub"):
             # Stub: pretend we detected changes in 3 classes
@@ -49,6 +51,8 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str, po
     # Add simple drift metric (placeholder): magnitude proportional to moved count
     drift_metric = float(mask_stats.get("moved", 0)) / max(1.0, float(sum(mask_stats.values())))
     delta["drift"] = drift_metric
+    if used_learned:
+        delta["pose_drift"] = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
     delta_table_path = str(Path(out_dir) / "delta_table.json")
     with open(delta_table_path, "w", encoding="utf-8") as f:
         json.dump(delta, f)
@@ -71,6 +75,7 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str, po
         "recall": recall,
         "f1": f1,
         "drift": drift_metric,
+        "used_learned": used_learned,
     }
 
 
