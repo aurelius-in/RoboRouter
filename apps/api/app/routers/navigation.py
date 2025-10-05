@@ -1,5 +1,30 @@
 from __future__ import annotations
 
+from typing import Any, Dict
+
+from fastapi import APIRouter, HTTPException
+
+
+router = APIRouter(tags=["Navigation"])
+
+
+@router.get("/nav/map")
+def build_map(scene_id: str, type: str = "occupancy") -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    if type not in ("occupancy", "esdf"):
+        raise HTTPException(status_code=400, detail="Unsupported map type")
+    # Stub response with minimal metadata; a real impl would generate rasters or grids
+    return {"scene_id": scene_id, "type": type, "size": [256, 256], "resolution_m": 0.1}
+
+
+@router.get("/nav/plan")
+def plan_path(scene_id: str, start: str, goal: str, planner: str = "astar") -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    if planner not in ("astar", "teb"):
+        raise HTTPException(status_code=400, detail="Unsupported planner")
+    # Stub polyline path with two points
+    return {"scene_id": scene_id, "planner": planner, "path": [[0, 0, 0], [1, 1, 0]], "cost": 1.414}
+
+from __future__ import annotations
+
 import json
 import tempfile
 import uuid

@@ -8,12 +8,13 @@ from typing import Dict
 from ..config import settings
 from ..utils.change import format_delta_table
 from ..utils.tracing import span
+from .change_learned import run_learned_change
 
 
 logger = logging.getLogger(__name__)
 
 
-def run_change_detection(baseline_path: str, current_path: str, out_dir: str) -> Dict[str, str | float]:
+def run_change_detection(baseline_path: str, current_path: str, out_dir: str, pose_drift: float | None = None) -> Dict[str, str | float | int]:
     """Voxel-diff change detection stub.
 
     Generates a tiny change mask summary and a delta table JSON.
@@ -21,9 +22,12 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
     """
     Path(out_dir).mkdir(parents=True, exist_ok=True)
 
+    used_learned = 0
     if settings.change_use_learned:
         with span("change_detection.learned_stub"):
-            mask_stats = {"added": 30, "removed": 12, "moved": 7}
+            d = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
+            mask_stats = run_learned_change(baseline_path, current_path, pose_drift=d)
+            used_learned = 1
     else:
         with span("change_detection.stub"):
             # Stub: pretend we detected changes in 3 classes
@@ -33,9 +37,21 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
         json.dump({"mask_stats": mask_stats, "voxel_size_m": settings.change_voxel_size_m}, f)
 
     delta = format_delta_table(mask_stats)
+    # Class-wise deltas (stub): generate per-class added/removed counts
+    try:
+        import numpy as _np
+        num_classes = int(getattr(settings, "seg_num_classes", 5))
+        rng = _np.random.default_rng(42)
+        by_class_added = {str(i): int(rng.integers(0, max(1, mask_stats.get("added", 0) // max(1, num_classes)))) for i in range(num_classes)}
+        by_class_removed = {str(i): int(rng.integers(0, max(1, mask_stats.get("removed", 0) // max(1, num_classes)))) for i in range(num_classes)}
+        delta["by_class"] = {"added": by_class_added, "removed": by_class_removed}
+    except Exception:
+        pass
     # Add simple drift metric (placeholder): magnitude proportional to moved count
     drift_metric = float(mask_stats.get("moved", 0)) / max(1.0, float(sum(mask_stats.values())))
     delta["drift"] = drift_metric
+    if used_learned:
+        delta["pose_drift"] = float(pose_drift if pose_drift is not None else settings.change_pose_drift_default)
     delta_table_path = str(Path(out_dir) / "delta_table.json")
     with open(delta_table_path, "w", encoding="utf-8") as f:
         json.dump(delta, f)
@@ -58,6 +74,7 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str) ->
         "recall": recall,
         "f1": f1,
         "drift": drift_metric,
+        "used_learned": used_learned,
     }
 
 

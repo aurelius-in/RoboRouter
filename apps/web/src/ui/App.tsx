@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [stats, setStats] = useState<any>(null)
   const [showStats, setShowStats] = useState<boolean>(false)
   const [models, setModels] = useState<any>(null)
+  const [showLegend, setShowLegend] = useState<boolean>(()=>{ try { return localStorage.getItem('show_legend')==='true' } catch { return false } })
 
   useEffect(() => {
     Promise.all([getHealth(), getMeta(), getStats(), getConfig(), getModels()])
@@ -38,12 +39,14 @@ export const App: React.FC = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  // Keyboard shortcuts: s(toggle stats), /(focus search), [/] adjust scene page size, r(refresh scenes), a(refresh artifacts), u(refresh runs)
+  // Keyboard shortcuts: s(toggle stats), l(toggle legend), /(focus search), [/] adjust scene page size, r(refresh scenes), a(refresh artifacts), u(refresh runs)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return; // don't hijack typing in inputs
       if (e.key === 's') {
         setShowStats(v => !v)
+      } else if (e.key.toLowerCase() === 'l') {
+        setShowLegend(v=>{ const nv = !v; try{ localStorage.setItem('show_legend', String(nv)) }catch{} return nv })
       } else if (e.key === '/') {
         const el = document.getElementById('rr_scene_search') as HTMLInputElement | null
         if (el) { el.focus(); e.preventDefault() }
@@ -103,6 +106,8 @@ export const App: React.FC = () => {
   const [runReg, setRunReg] = useState<boolean>(true)
   const [runSeg, setRunSeg] = useState<boolean>(true)
   const [runChg, setRunChg] = useState<boolean>(true)
+  const [runId, setRunId] = useState<string>('')
+  const [runRetries, setRunRetries] = useState<number>(0)
 
   async function onRunPipeline() {
     if (!sceneId) return
@@ -113,6 +118,11 @@ export const App: React.FC = () => {
     setStatus(`Running ${steps.join(' → ')} ...`)
     const resp = await runPipeline(sceneId, steps)
     setOrchestratorPlan(resp?.orchestrator?.plan ?? null)
+    if (resp?.run_id) {
+      setRunId(resp.run_id)
+      setRunRetries(Number(resp?.retries ?? 0))
+      setStatus(s=> `${s} run_id=${resp.run_id} retries=${resp.retries ?? 0}`)
+    }
     setStatus('Done.')
     try {
       const sc = await getScene(sceneId)
@@ -267,6 +277,7 @@ export const App: React.FC = () => {
         )}
         <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await authPing(); setStatus('Auth ok') } catch { setStatus('Auth failed') } }}>Auth</button>
         <button style={{ marginLeft: 6 }} onClick={async()=>{ try { const r = await adminCleanup(); setStatus(`Cleanup: ${JSON.stringify(r.deleted || {})}`) } catch { setStatus('Cleanup failed') } }}>Cleanup</button>
+        <button style={{ marginLeft: 6 }} onClick={()=> setShowLegend(v=>{ const nv = !v; try{ localStorage.setItem('show_legend', String(nv)) }catch{} return nv })}>{showLegend ? 'Hide' : 'Show'} legend (L)</button>
       </div>
         {showStats && stats && (
         <div style={{ marginBottom: 12, color: '#555' }}>
@@ -351,6 +362,13 @@ export const App: React.FC = () => {
             <label><input type="checkbox" checked={runChg} onChange={(e)=>setRunChg(e.target.checked)} /> change</label>
           </div>
           <button style={{ marginTop: 4 }} onClick={onRunPipeline}>Run</button>
+          {runId && (
+            <span style={{ marginLeft: 8, fontSize: 12, color: '#555' }}>
+              run_id={runId} retries={runRetries}
+              <button style={{ marginLeft: 8 }} onClick={async()=>{ try { await (await import('../api/client')).pipelineCancel(runId); setStatus('Cancelled') } catch { setStatus('Cancel failed') } }}>Cancel</button>
+              <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await (await import('../api/client')).pipelineResume(runId); setStatus('Resumed') } catch { setStatus('Resume failed') } }}>Resume</button>
+            </span>
+          )}
         </div>
 
         <div>
@@ -460,6 +478,8 @@ export const App: React.FC = () => {
             &nbsp; reg_ms={String(metrics.find(m=>m.name==='registration_ms')?.value || 0)}
             &nbsp; seg_ms={String(metrics.find(m=>m.name==='segmentation_ms')?.value || 0)}
             &nbsp; chg_ms={String(metrics.find(m=>m.name==='change_detection_ms')?.value || 0)}
+            &nbsp; drift={String(metrics.find(m=>m.name==='change_drift')?.value ?? '')}
+            &nbsp; learned={String(metrics.find(m=>m.name==='change_used_learned')?.value ?? '')}
             <div style={{ marginTop: 4 }}>
               <b>Gates:</b>
               &nbsp; reg={Number(metrics.find(m=>m.name==='registration_pass')?.value || 0) ? 'pass' : 'fail'}
@@ -532,7 +552,7 @@ export const App: React.FC = () => {
               {runs.map(r => {
                 const ok = r.overall_pass ? '✅' : '❌'
                 return (
-                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')}</li>
+                  <li key={r.id}><code>{r.id}</code> — {ok} rmse={String(r.rmse ?? '')} miou={String(r.miou ?? '')} f1={String(r.change_f1 ?? '')} drift={String((r.change_drift ?? ''))}</li>
                 )
               })}
             </ul>
@@ -561,6 +581,20 @@ export const App: React.FC = () => {
 
       <div style={{ marginTop: 24 }}>
         <h3>Viewer (placeholder)</h3>
+        {showLegend && (
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#444', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {Array.from({ length:  8 }).map((_, idx)=>{
+              const colors = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#a65628','#f781bf','#999999']
+              const c = colors[idx % colors.length]
+              return (
+                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 12, height: 12, background: c, display: 'inline-block', borderRadius: 2, border: '1px solid #3333' }} />
+                  class {idx}
+                </span>
+              )
+            })}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <input placeholder="artifact_id" value={selectedArtifactId} onChange={(e) => setSelectedArtifactId(e.target.value)} />
           <button onClick={onFetchArtifact}>Fetch URL</button>

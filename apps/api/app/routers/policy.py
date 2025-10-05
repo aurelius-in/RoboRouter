@@ -38,7 +38,7 @@ def policy_check(type: str | None = None, export_type: str | None = None, crs: s
                 db.commit()
         finally:
             db.close()
-    return {"allowed": allowed, "reason": reason}
+    return {"allowed": allowed, "reason": reason, "policy_version": policy_version}
 
 
 @router.post("/policy/check")
@@ -65,6 +65,6 @@ def policy_check_post(payload: Dict[str, Any]) -> Dict[str, Any]:  # type: ignor
                 db.commit()
         finally:
             db.close()
-    return {"allowed": allowed, "reason": reason}
+    return {"allowed": allowed, "reason": reason, "policy_version": policy_version}
 
 

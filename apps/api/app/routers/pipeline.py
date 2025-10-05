@@ -21,23 +21,30 @@ from ..mlflow_stub import log_metrics as mlflow_log_metrics
 from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
 from ..orchestrator.ray_orch import RayOrchestrator
+from ..orchestrator.langgraph_orch import LangGraphOrchestrator
 from ..config import settings
 from ..utils.settings_override import temporary_settings
 from ..models import AuditLog
+from fastapi import APIRouter
 
 
 router = APIRouter(tags=["Pipeline"])
 
 
 @router.post("/pipeline/run")
-def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_overrides: Optional[Dict[str, Any]] = None):  # type: ignore[no-untyped-def]
+def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_overrides: Optional[Dict[str, Any]] = None, pose_drift: Optional[float] = None):  # type: ignore[no-untyped-def]
     steps = steps or ["registration"]
     db: Session = SessionLocal()
     try:
-        orch = RayOrchestrator() if settings.orchestrator == "ray" else OrchestratorStub()
+        orch = OrchestratorStub()
+        if settings.orchestrator == "ray":
+            orch = RayOrchestrator()
+        elif settings.orchestrator == "langgraph":
+            orch = LangGraphOrchestrator()
         with __import__('contextlib').ExitStack() as _:
             # Record stub plan (no behavior change)
-            out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": orch.run(str(scene_id), steps)}
+            plan = orch.run(str(scene_id), steps)
+            out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": plan, "retries": int(getattr(settings, 'orchestrator_max_retries', 1)), "run_id": f"run_{scene_id}"}
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
@@ -186,7 +193,7 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 curr_path = str((__import__("pathlib").Path(td) / "current.laz"))
                 open(base_path, "wb").close()
                 open(curr_path, "wb").close()
-                cd_out = run_change_detection(base_path, curr_path, td)
+                cd_out = run_change_detection(base_path, curr_path, td, pose_drift)
 
                 mask_obj = f"change/mask_{scene_id}.json"
                 delta_obj = f"change/delta_{scene_id}.json"
@@ -217,6 +224,8 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 })
                 if "drift" in cd_out:
                     out["metrics"]["change_drift"] = float(cd_out["drift"])  # type: ignore[index]
+                if "used_learned" in cd_out:
+                    out["metrics"]["change_used_learned"] = float(cd_out["used_learned"])  # type: ignore[index]
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
@@ -259,5 +268,16 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         return out
     finally:
         db.close()
+
+
+@router.post("/pipeline/cancel")
+def pipeline_cancel(run_id: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    # Stub cancel - a real orchestrator would track and cancel
+    return {"run_id": run_id, "status": "cancelled"}
+
+
+@router.post("/pipeline/resume")
+def pipeline_resume(run_id: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    return {"run_id": run_id, "status": "resumed"}
 
 

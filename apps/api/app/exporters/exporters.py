@@ -62,7 +62,7 @@ def export_laz(input_laz: str, out_laz: str) -> str:
 	return out_laz
 
 
-def export_gltf(input_laz: str, out_gltf: str) -> str:
+def export_gltf(input_laz: str, out_gltf: str, *, draco: bool = False) -> str:
 	ensure_parent(out_gltf)
 	# Placeholder: write a minimal valid glTF 2.0 JSON so viewers load
 	try:

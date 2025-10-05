@@ -54,8 +54,8 @@ export async function uploadFile(file: File): Promise<{ path: string }> { const 
 export type Health = { status: string; gpu: { name: string }[] }
 export const getHealth = () => apiGet<Health>('/health')
 
-export const runPipeline = (sceneId: string, steps: string[]) =>
-  apiPost<any>(`/pipeline/run?scene_id=${sceneId}`, { steps, config_overrides: {} })
+export const runPipeline = (sceneId: string, steps: string[], opts?: { pose_drift?: number }) =>
+  apiPost<any>(`/pipeline/run?scene_id=${sceneId}`, { steps, config_overrides: {}, pose_drift: opts?.pose_drift })
 
 export const generateReport = (sceneId: string) =>
   apiPost<any>(`/report/generate?scene_id=${sceneId}`)
@@ -113,6 +113,8 @@ export const getRunsCsv = (opts?: { only_failed?: boolean; only_passed?: boolean
 export const deleteScene = (sceneId: string) => apiDelete<any>(`/scene/${sceneId}`)
 export const getModels = () => apiGet<any>('/models')
 export const getGates = (sceneId: string) => apiGet<any>(`/gates?scene_id=${encodeURIComponent(sceneId)}`)
+export const pipelineCancel = (runId: string) => apiPost<any>(`/pipeline/cancel?run_id=${encodeURIComponent(runId)}`)
+export const pipelineResume = (runId: string) => apiPost<any>(`/pipeline/resume?run_id=${encodeURIComponent(runId)}`)
 export const listSceneArtifacts = (sceneId: string, offset: number, limit: number, opts?: { type?: string; exportsOnly?: boolean }) => {
   const p = new URLSearchParams({ offset: String(offset), limit: String(limit) })
   if (opts?.type) p.set('type', opts.type)
