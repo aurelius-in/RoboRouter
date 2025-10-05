@@ -40,13 +40,13 @@ export const App: React.FC = () => {
 
   const [sceneList, setSceneList] = useState<{ id: string; source_uri: string; crs: string; created_at: string }[]>([])
   const [scenesOffset, setScenesOffset] = useState<number>(0)
-  const [scenesLimit, setScenesLimit] = useState<number>(50)
+  const [scenesLimit, setScenesLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('scenes_limit')||'50')||50 } catch { return 50 } })
   const [scenesTotal, setScenesTotal] = useState<number>(0)
   const [runs, setRuns] = useState<any[]>([])
-  const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(false)
-  const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(false)
+  const [runsOnlyFailed, setRunsOnlyFailed] = useState<boolean>(()=>{ try { return localStorage.getItem('runs_only_failed')==='true' } catch { return false } })
+  const [runsOnlyPassed, setRunsOnlyPassed] = useState<boolean>(()=>{ try { return localStorage.getItem('runs_only_passed')==='true' } catch { return false } })
   const [runsOffset, setRunsOffset] = useState<number>(0)
-  const [runsLimit, setRunsLimit] = useState<number>(10)
+  const [runsLimit, setRunsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('runs_limit')||'10')||10 } catch { return 10 } })
   const [runsTotal, setRunsTotal] = useState<number>(0)
   const [sceneQuery, setSceneQuery] = useState<string>('')
   async function refreshScenes(nextOffset: number = scenesOffset) {
@@ -143,12 +143,12 @@ export const App: React.FC = () => {
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>('')
   const [artifactsOffset, setArtifactsOffset] = useState<number>(0)
-  const [artifactsLimit, setArtifactsLimit] = useState<number>(20)
+  const [artifactsLimit, setArtifactsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('artifacts_limit')||'20')||20 } catch { return 20 } })
   const [artifactsTotal, setArtifactsTotal] = useState<number>(0)
   const [exportsOnly, setExportsOnly] = useState<boolean>(false)
-  const [exportCrs, setExportCrs] = useState<string>('EPSG:3857')
+  const [exportCrs, setExportCrs] = useState<string>(()=>{ try { return localStorage.getItem('export_crs') || 'EPSG:3857' } catch { return 'EPSG:3857' } })
   const allowedCrsOptions = (health?.cfg?.allowed_crs) || ['EPSG:3857', 'EPSG:4978', 'EPSG:26915']
-  const [exportType, setExportType] = useState<string>('potree')
+  const [exportType, setExportType] = useState<string>(()=>{ try { return localStorage.getItem('export_type') || 'potree' } catch { return 'potree' } })
 
   async function openLatestByType(type: string) {
     if (!sceneId) return
@@ -312,7 +312,7 @@ export const App: React.FC = () => {
           <input placeholder="scene_id" value={sceneId} onChange={(e) => setSceneId(e.target.value)} />
           <button style={{ marginLeft: 6 }} onClick={async()=>{ try { await navigator.clipboard.writeText(sceneId); setStatus('Scene ID copied') } catch { setStatus('Copy failed') } }}>Copy</button>
           <div style={{ marginTop: 6 }}>
-            <input placeholder="api key (optional)" onChange={(e)=>{ try { localStorage.setItem('api_key', e.target.value) } catch {} }} />
+            <input placeholder="api key (optional)" defaultValue={(()=>{ try { return localStorage.getItem('api_key')||'' } catch { return '' } })()} onChange={(e)=>{ try { localStorage.setItem('api_key', e.target.value) } catch {} }} />
           </div>
         </div>
 
@@ -371,7 +371,7 @@ export const App: React.FC = () => {
           <h3>Export</h3>
           <div style={{ marginBottom: 6 }}>
             <label>Type&nbsp;
-              <select value={exportType} onChange={(e)=>setExportType(e.target.value)}>
+              <select value={exportType} onChange={(e)=>{ setExportType(e.target.value); try { localStorage.setItem('export_type', e.target.value) } catch {} }}>
                 <option value="potree">potree</option>
                 <option value="potree_zip">potree_zip</option>
                 <option value="laz">laz</option>
@@ -380,7 +380,7 @@ export const App: React.FC = () => {
               </select>
             </label>
             <label>CRS&nbsp;
-              <select value={exportCrs} onChange={(e)=>setExportCrs(e.target.value)}>
+              <select value={exportCrs} onChange={(e)=>{ setExportCrs(e.target.value); try { localStorage.setItem('export_crs', e.target.value) } catch {} }}>
                 {allowedCrsOptions.map((crs: string) => (
                   <option key={crs} value={crs}>{crs}</option>
                 ))}
@@ -468,6 +468,11 @@ export const App: React.FC = () => {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={()=> refreshScenes(Math.max(0, scenesOffset - scenesLimit))} disabled={scenesOffset === 0}>Prev</button>
               <button onClick={()=> refreshScenes(scenesOffset + scenesLimit)} disabled={scenesOffset + scenesLimit >= scenesTotal}>Next</button>
+              <label> page size
+                <select value={scenesLimit} onChange={(e)=>{ const v = Number(e.target.value)||50; setScenesLimit(v); try { localStorage.setItem('scenes_limit', String(v)) } catch {} }}>
+                  {[10,20,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
             </div>
           </div>
         )}
@@ -489,6 +494,11 @@ export const App: React.FC = () => {
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={()=> refreshArtifacts(Math.max(0, artifactsOffset - artifactsLimit))} disabled={artifactsOffset === 0}>Prev</button>
           <button onClick={()=> refreshArtifacts(artifactsOffset + artifactsLimit)} disabled={artifactsOffset + artifactsLimit >= artifactsTotal}>Next</button>
+          <label> page size
+            <select value={artifactsLimit} onChange={(e)=>{ const v = Number(e.target.value)||20; setArtifactsLimit(v); try { localStorage.setItem('artifacts_limit', String(v)) } catch {} }}>
+              {[10,20,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
         </div>
         {runs.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -504,6 +514,11 @@ export const App: React.FC = () => {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={()=> refreshRuns(Math.max(0, runsOffset - runsLimit))} disabled={runsOffset === 0}>Prev</button>
               <button onClick={()=> refreshRuns(runsOffset + runsLimit)} disabled={runsOffset + runsLimit >= runsTotal}>Next</button>
+              <label> page size
+                <select value={runsLimit} onChange={(e)=>{ const v = Number(e.target.value)||10; setRunsLimit(v); try { localStorage.setItem('runs_limit', String(v)) } catch {} }}>
+                  {[10,20,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
             </div>
           </div>
         )}
