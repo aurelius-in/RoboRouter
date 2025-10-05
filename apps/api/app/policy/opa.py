@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Optional
 from ..utils.crs import allowed_crs
 from ..config import settings
 import json
 from pathlib import Path
 
 
-def _load_policy() -> tuple[set[str], set[str]]:
+def _load_policy() -> tuple[set[str], set[str], Optional[str]]:
     """Load dynamic policy from a JSON file if configured.
 
     Expected JSON schema (minimal):
@@ -20,12 +20,16 @@ def _load_policy() -> tuple[set[str], set[str]]:
     types = default_types
     crs_over = None
     path = settings.opa_policy_path
+    version: Optional[str] = None
     if path:
         p = Path(path)
         if p.exists():
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
                 if isinstance(data, dict):
+                    v = data.get("version")
+                    if isinstance(v, (str, int, float)):
+                        version = str(v)
                     t = data.get("allowed_export_types")
                     if isinstance(t, list):
                         types = {str(x).lower() for x in t}
@@ -34,7 +38,7 @@ def _load_policy() -> tuple[set[str], set[str]]:
                         crs_over = {str(x).upper() for x in c}
             except Exception:
                 pass
-    return types, (crs_over or set())
+    return types, (crs_over or set()), version
 
 
 def evaluate_export_policy(policy_input: Dict[str, Any]) -> Tuple[bool, str]:
@@ -45,7 +49,7 @@ def evaluate_export_policy(policy_input: Dict[str, Any]) -> Tuple[bool, str]:
     export_type = str(policy_input.get("type", "")).lower()
     crs = str(policy_input.get("crs", "")).upper()
 
-    allowed_types, crs_override = _load_policy()
+    allowed_types, crs_override, _ = _load_policy()
 
     if export_type not in allowed_types:
         return False, f"export type '{export_type}' is not allowed"
