@@ -29,4 +29,10 @@ class LangGraphOrchestrator:
         }
         return {"engine": engine, "plan": plan, "lineage": lineage, "cancellable": True, "resumable": True}
 
+    def cancel(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
+        return {"run_id": run_id, "status": "cancelled"}
+
+    def resume(self, run_id: str) -> Dict[str, Any]:  # type: ignore[type-arg]
+        return {"run_id": run_id, "status": "resumed"}
+
 
