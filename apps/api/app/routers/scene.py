@@ -95,7 +95,10 @@ def scenes_csv(offset: int = 0, limit: int = 1000, q: Optional[str] = None) -> s
         db.close()
 
 
-@router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key), Depends(require_role("admin"))])
+from ..deps import require_oidc_user
+
+
+@router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key), Depends(require_role("admin")), Depends(require_oidc_user)])
 def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
