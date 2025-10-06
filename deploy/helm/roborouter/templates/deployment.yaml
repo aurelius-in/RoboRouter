@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "roborouter.fullname" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "roborouter.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "roborouter.name" . }}
+    spec:
+      containers:
+        - name: api
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ROBOROUTER_ORCHESTRATOR
+              value: {{ .Values.env.ROBOROUTER_ORCHESTRATOR | quote }}
+            - name: ROBOROUTER_RATE_LIMIT_RPM
+              value: {{ .Values.env.ROBOROUTER_RATE_LIMIT_RPM | quote }}
+

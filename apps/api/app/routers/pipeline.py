@@ -128,33 +128,39 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 raise HTTPException(status_code=400, detail="No input artifact found for segmentation")
 
             client = get_minio_client()
-            with tempfile.TemporaryDirectory() as td:
-                # Simulate segmentation with temp input
-                input_path = str((__import__("pathlib").Path(td) / "input_aligned.laz"))
-                open(input_path, "wb").close()
-                seg_out = run_segmentation(input_path, td)
+            seg_attempts = 0
+            max_retries = max(1, int(getattr(settings, "orchestrator_max_retries", 1)))
+            while seg_attempts < max_retries:
+                seg_attempts += 1
+                with tempfile.TemporaryDirectory() as td:
+                    # Simulate segmentation with temp input
+                    input_path = str((__import__("pathlib").Path(td) / "input_aligned.laz"))
+                    open(input_path, "wb").close()
+                    seg_out = run_segmentation(input_path, td)
 
-                classes_obj = f"segmentation/classes_{scene_id}.json"
-                conf_obj = f"segmentation/confidence_{scene_id}.json"
-                ent_obj = f"segmentation/entropy_{scene_id}.json"
-                upload_file(client, "roborouter-processed", classes_obj, seg_out["classes_path"])  # type: ignore[index]
-                upload_file(client, "roborouter-processed", conf_obj, seg_out["confidence_path"])  # type: ignore[index]
-                upload_file(client, "roborouter-processed", ent_obj, seg_out["entropy_path"])  # type: ignore[index]
+                    classes_obj = f"segmentation/classes_{scene_id}.json"
+                    conf_obj = f"segmentation/confidence_{scene_id}.json"
+                    ent_obj = f"segmentation/entropy_{scene_id}.json"
+                    upload_file(client, "roborouter-processed", classes_obj, seg_out["classes_path"])  # type: ignore[index]
+                    upload_file(client, "roborouter-processed", conf_obj, seg_out["confidence_path"])  # type: ignore[index]
+                    upload_file(client, "roborouter-processed", ent_obj, seg_out["entropy_path"])  # type: ignore[index]
 
-                art_classes = Artifact(scene_id=scene_id, type="segmentation_classes", uri=f"s3://roborouter-processed/{classes_obj}")
-                art_conf = Artifact(scene_id=scene_id, type="segmentation_confidence", uri=f"s3://roborouter-processed/{conf_obj}")
-                art_ent = Artifact(scene_id=scene_id, type="segmentation_entropy", uri=f"s3://roborouter-processed/{ent_obj}")
-                db.add_all([art_classes, art_conf, art_ent])
-                db.add(Metric(scene_id=scene_id, name="miou", value=float(seg_out["miou"])) )  # type: ignore[index]
-                if "seg_used_minkowski" in seg_out:
-                    db.add(Metric(scene_id=scene_id, name="seg_used_minkowski", value=float(seg_out["seg_used_minkowski"])) )  # type: ignore[index]
-                if "seg_used_cuda" in seg_out:
-                    db.add(Metric(scene_id=scene_id, name="seg_used_cuda", value=float(seg_out["seg_used_cuda"])) )  # type: ignore[index]
-                db.commit()
-                for a in (art_classes, art_conf, art_ent):
-                    db.refresh(a)
-                    out["artifacts"].append(str(a.id))
-                out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
+                    art_classes = Artifact(scene_id=scene_id, type="segmentation_classes", uri=f"s3://roborouter-processed/{classes_obj}")
+                    art_conf = Artifact(scene_id=scene_id, type="segmentation_confidence", uri=f"s3://roborouter-processed/{conf_obj}")
+                    art_ent = Artifact(scene_id=scene_id, type="segmentation_entropy", uri=f"s3://roborouter-processed/{ent_obj}")
+                    db.add_all([art_classes, art_conf, art_ent])
+                    db.add(Metric(scene_id=scene_id, name="miou", value=float(seg_out["miou"])) )  # type: ignore[index]
+                    if "seg_used_minkowski" in seg_out:
+                        db.add(Metric(scene_id=scene_id, name="seg_used_minkowski", value=float(seg_out["seg_used_minkowski"])) )  # type: ignore[index]
+                    if "seg_used_cuda" in seg_out:
+                        db.add(Metric(scene_id=scene_id, name="seg_used_cuda", value=float(seg_out["seg_used_cuda"])) )  # type: ignore[index]
+                    db.commit()
+                    for a in (art_classes, art_conf, art_ent):
+                        db.refresh(a)
+                        out["artifacts"].append(str(a.id))
+                    out["metrics"]["miou"] = float(seg_out["miou"])  # type: ignore[index]
+                    break
+            out["metrics"]["segmentation_retries"] = float(seg_attempts)
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "segmentation", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(dur)
@@ -187,45 +193,51 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
                 raise HTTPException(status_code=400, detail="No suitable baseline/current artifacts for change detection")
 
             client = get_minio_client()
-            with tempfile.TemporaryDirectory() as td:
-                # Simulate change detection with temp inputs
-                base_path = str((__import__("pathlib").Path(td) / "baseline.laz"))
-                curr_path = str((__import__("pathlib").Path(td) / "current.laz"))
-                open(base_path, "wb").close()
-                open(curr_path, "wb").close()
-                cd_out = run_change_detection(base_path, curr_path, td, pose_drift)
+            chg_attempts = 0
+            max_retries = max(1, int(getattr(settings, "orchestrator_max_retries", 1)))
+            while chg_attempts < max_retries:
+                chg_attempts += 1
+                with tempfile.TemporaryDirectory() as td:
+                    # Simulate change detection with temp inputs
+                    base_path = str((__import__("pathlib").Path(td) / "baseline.laz"))
+                    curr_path = str((__import__("pathlib").Path(td) / "current.laz"))
+                    open(base_path, "wb").close()
+                    open(curr_path, "wb").close()
+                    cd_out = run_change_detection(base_path, curr_path, td, pose_drift)
 
-                mask_obj = f"change/mask_{scene_id}.json"
-                delta_obj = f"change/delta_{scene_id}.json"
-                try:
-                    upload_file(client, "roborouter-processed", mask_obj, cd_out["change_mask_path"])  # type: ignore[index]
-                    upload_file(client, "roborouter-processed", delta_obj, cd_out["delta_table_path"])  # type: ignore[index]
-                except Exception as exc:  # noqa: BLE001
-                    # Log and proceed to record metrics even if uploads fail
-                    import logging
-                    logging.getLogger(__name__).exception("Upload failed: %s", exc)
+                    mask_obj = f"change/mask_{scene_id}.json"
+                    delta_obj = f"change/delta_{scene_id}.json"
+                    try:
+                        upload_file(client, "roborouter-processed", mask_obj, cd_out["change_mask_path"])  # type: ignore[index]
+                        upload_file(client, "roborouter-processed", delta_obj, cd_out["delta_table_path"])  # type: ignore[index]
+                    except Exception as exc:  # noqa: BLE001
+                        # Log and proceed to record metrics even if uploads fail
+                        import logging
+                        logging.getLogger(__name__).exception("Upload failed: %s", exc)
 
-                art_mask = Artifact(scene_id=scene_id, type="change_mask", uri=f"s3://roborouter-processed/{mask_obj}")
-                art_delta = Artifact(scene_id=scene_id, type="change_delta", uri=f"s3://roborouter-processed/{delta_obj}")
-                db.add_all([art_mask, art_delta])
-                db.add(Metric(scene_id=scene_id, name="change_precision", value=float(cd_out["precision"])) )  # type: ignore[index]
-                db.add(Metric(scene_id=scene_id, name="change_recall", value=float(cd_out["recall"])) )  # type: ignore[index]
-                db.add(Metric(scene_id=scene_id, name="change_f1", value=float(cd_out["f1"])) )  # type: ignore[index]
-                if "drift" in cd_out:
-                    db.add(Metric(scene_id=scene_id, name="change_drift", value=float(cd_out["drift"])) )  # type: ignore[index]
-                db.commit()
-                for a in (art_mask, art_delta):
-                    db.refresh(a)
-                    out["artifacts"].append(str(a.id))
-                out["metrics"].update({
-                    "change_precision": float(cd_out["precision"]),  # type: ignore[index]
-                    "change_recall": float(cd_out["recall"]),      # type: ignore[index]
-                    "change_f1": float(cd_out["f1"]),              # type: ignore[index]
-                })
-                if "drift" in cd_out:
-                    out["metrics"]["change_drift"] = float(cd_out["drift"])  # type: ignore[index]
-                if "used_learned" in cd_out:
-                    out["metrics"]["change_used_learned"] = float(cd_out["used_learned"])  # type: ignore[index]
+                    art_mask = Artifact(scene_id=scene_id, type="change_mask", uri=f"s3://roborouter-processed/{mask_obj}")
+                    art_delta = Artifact(scene_id=scene_id, type="change_delta", uri=f"s3://roborouter-processed/{delta_obj}")
+                    db.add_all([art_mask, art_delta])
+                    db.add(Metric(scene_id=scene_id, name="change_precision", value=float(cd_out["precision"])) )  # type: ignore[index]
+                    db.add(Metric(scene_id=scene_id, name="change_recall", value=float(cd_out["recall"])) )  # type: ignore[index]
+                    db.add(Metric(scene_id=scene_id, name="change_f1", value=float(cd_out["f1"])) )  # type: ignore[index]
+                    if "drift" in cd_out:
+                        db.add(Metric(scene_id=scene_id, name="change_drift", value=float(cd_out["drift"])) )  # type: ignore[index]
+                    db.commit()
+                    for a in (art_mask, art_delta):
+                        db.refresh(a)
+                        out["artifacts"].append(str(a.id))
+                    out["metrics"].update({
+                        "change_precision": float(cd_out["precision"]),  # type: ignore[index]
+                        "change_recall": float(cd_out["recall"]),      # type: ignore[index]
+                        "change_f1": float(cd_out["f1"]),              # type: ignore[index]
+                    })
+                    if "drift" in cd_out:
+                        out["metrics"]["change_drift"] = float(cd_out["drift"])  # type: ignore[index]
+                    if "used_learned" in cd_out:
+                        out["metrics"]["change_used_learned"] = float(cd_out["used_learned"])  # type: ignore[index]
+                    break
+            out["metrics"]["change_detection_retries"] = float(chg_attempts)
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
