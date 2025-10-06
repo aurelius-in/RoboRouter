@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     mlflow_enabled: bool = False
     mlflow_tracking_uri: str | None = None
 
+    # AuthZ
+    authz_enforce_scenes: bool = False
+
     class Config:
         env_prefix = "ROBOROUTER_"
 
