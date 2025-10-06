@@ -178,6 +178,7 @@ export const App: React.FC = () => {
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>(()=>{ try { return localStorage.getItem('artifact_type_filter') || '' } catch { return '' } })
   const [useDraco, setUseDraco] = useState<boolean>(()=>{ try { return localStorage.getItem('export_draco')==='true' } catch { return false } })
+  const [simplifyRatio, setSimplifyRatio] = useState<number>(()=>{ try { return Number(localStorage.getItem('export_simplify')||'0')||0 } catch { return 0 } })
   const [artifactsOffset, setArtifactsOffset] = useState<number>(0)
   const [artifactsLimit, setArtifactsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('artifacts_limit')||'20')||20 } catch { return 20 } })
   const [artifactsTotal, setArtifactsTotal] = useState<number>(0)
@@ -432,9 +433,9 @@ export const App: React.FC = () => {
             </label>
             <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await policyCheck(exportType, exportCrs); setStatus(r.allowed ? 'Policy: allowed' : `Policy: blocked (${r.reason})`) } catch { setStatus('Policy check failed') } }}>Check policy</button>
           </div>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus(`Exporting ${exportType}${exportType==='gltf' && useDraco ? ' (draco)' : ''} ...`);
+          <button onClick={async()=>{ if(!sceneId) return; setStatus(`Exporting ${exportType}${exportType==='gltf' && (useDraco || simplifyRatio>0) ? ` (draco${useDraco?'+':''}${simplifyRatio>0?`simplify=${simplifyRatio}`:''})` : ''} ...`);
             try{
-              const resp = await requestExport(sceneId, exportType, exportCrs, exportType==='gltf' ? useDraco : false);
+              const resp = await requestExport(sceneId, exportType, exportCrs, exportType==='gltf' ? useDraco : false, exportType==='gltf' ? simplifyRatio : 0);
               // If we got an artifact_id, fetch and open it inline
               if (resp && resp.artifact_id) {
                 const info = await getArtifactUrl(resp.artifact_id)
@@ -447,6 +448,12 @@ export const App: React.FC = () => {
             <label style={{ marginLeft: 8 }}>
               <input type="checkbox" checked={useDraco} onChange={(e)=>{ setUseDraco(e.target.checked); try { localStorage.setItem('export_draco', String(e.target.checked)) } catch {} }} /> draco
             </label>
+          )}
+          {exportType==='gltf' && (
+            <span style={{ marginLeft: 8 }}>
+              simplify
+              <input type="number" min={0} max={1} step={0.05} value={simplifyRatio} onChange={(e)=>{ const v = Math.min(1, Math.max(0, Number(e.target.value)||0)); setSimplifyRatio(v); try { localStorage.setItem('export_simplify', String(v)) } catch {} }} style={{ width: 64, marginLeft: 4 }} />
+            </span>
           )}
           <div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>Potree tiles open in a new tab.</div>
           <div style={{ marginTop: 6 }}>
@@ -588,17 +595,35 @@ export const App: React.FC = () => {
       <div style={{ marginTop: 24 }}>
         <h3>Viewer (placeholder)</h3>
         {showLegend && (
-          <div style={{ marginBottom: 8, fontSize: 12, color: '#444', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {Array.from({ length:  8 }).map((_, idx)=>{
-              const colors = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#a65628','#f781bf','#999999']
-              const c = colors[idx % colors.length]
-              return (
-                <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 12, height: 12, background: c, display: 'inline-block', borderRadius: 2, border: '1px solid #3333' }} />
-                  class {idx}
-                </span>
-              )
-            })}
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#444', display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Class palette */}
+            <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+              <b style={{ fontWeight: 600 }}>classes</b>
+              {Array.from({ length:  8 }).map((_, idx)=>{
+                const colors = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#a65628','#f781bf','#999999']
+                const c = colors[idx % colors.length]
+                return (
+                  <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 12, height: 12, background: c, display: 'inline-block', borderRadius: 2, border: '1px solid #3333' }} />
+                    {idx}
+                  </span>
+                )
+              })}
+            </div>
+            {/* Confidence colorbar */}
+            <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+              <b style={{ fontWeight: 600 }}>confidence</b>
+              <span style={{ width: 140, height: 10, background: 'linear-gradient(90deg, #444 0%, #ffd166 50%, #06d6a0 100%)', display: 'inline-block', borderRadius: 4, border: '1px solid #3333' }} />
+              <span>0</span>
+              <span>1</span>
+            </div>
+            {/* Entropy colorbar */}
+            <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+              <b style={{ fontWeight: 600 }}>entropy</b>
+              <span style={{ width: 140, height: 10, background: 'linear-gradient(90deg, #06d6a0 0%, #ffd166 50%, #ef476f 100%)', display: 'inline-block', borderRadius: 4, border: '1px solid #3333' }} />
+              <span>low</span>
+              <span>high</span>
+            </div>
           </div>
         )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

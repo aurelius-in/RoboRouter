@@ -85,8 +85,8 @@ export type SceneAudit = { id: string; action: string; details?: Record<string, 
 export type SceneDetail = { id: string; artifacts: SceneArtifact[]; metrics?: SceneMetric[]; audit?: SceneAudit[] }
 export const getScene = (sceneId: string) => apiGet<SceneDetail>(`/scene/${sceneId}`)
 
-export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG:3857', draco: boolean = false) =>
-  apiPost<any>(`/export?scene_id=${sceneId}&type=${type}&crs=${crs}&draco=${draco}`)
+export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG:3857', draco: boolean = false, simplify: number = 0) =>
+  apiPost<any>(`/export?scene_id=${sceneId}&type=${type}&crs=${crs}&draco=${draco}&simplify=${simplify}`)
 
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
