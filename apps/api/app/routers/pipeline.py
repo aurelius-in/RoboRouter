@@ -4,11 +4,12 @@ import tempfile
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
+from ..deps import require_api_key
 from ..models import Artifact, Metric, Scene
 from ..pipeline.registration import register_clouds
 from ..pipeline.segmentation import run_segmentation
@@ -28,7 +29,7 @@ from ..models import AuditLog
 from fastapi import APIRouter
 
 
-router = APIRouter(tags=["Pipeline"])
+router = APIRouter(tags=["Pipeline"], dependencies=[Depends(require_api_key)])
 
 
 @router.post("/pipeline/run")
