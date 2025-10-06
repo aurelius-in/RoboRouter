@@ -28,7 +28,13 @@ from .routers.gates import router as gates_router
 from .routers.upload import router as upload_router
 
 
-app = FastAPI(title="RoboRouter API", version="0.1.0")
+app = FastAPI(
+    title="RoboRouter API",
+    version="0.1.0",
+    description="On-prem, multi-agent 3D point-cloud perception and explainable autonomy API.",
+    contact={"name": "RoboRouter", "url": "https://github.com/aurelius-in/RoboRouter"},
+    license_info={"name": "Apache-2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"},
+)
 setup_otel("roborouter-api")
 
 # Allow local Vite UI

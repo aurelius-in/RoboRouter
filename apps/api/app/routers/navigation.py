@@ -71,7 +71,15 @@ def nav_map(scene_id: uuid.UUID) -> NavigationMapResponse:  # type: ignore[no-un
             uri = f"s3://roborouter-processed/{obj}"
             art = Artifact(scene_id=scene_id, type="nav_map", uri=uri)
             db.add(art)
-            db.add(AuditLog(scene_id=scene_id, action="nav_map_generated", details=metadata))
+            from ..utils.sign import sign_dict as _sign
+            md = dict(metadata)
+            try:
+                sig = _sign({"scene_id": str(scene_id), "type": "nav_map"})
+                if sig:
+                    md["signature"] = sig
+            except Exception:
+                pass
+            db.add(AuditLog(scene_id=scene_id, action="nav_map_generated", details=md))
             db.commit()
             db.refresh(art)
 
@@ -127,13 +135,21 @@ def nav_plan(payload: NavigationPlanRequest) -> NavigationPlanResponse:  # type:
                 allowed = False
                 reasons.append("uncertainty too high")
 
-            db.add(AuditLog(scene_id=payload.scene_id, action="nav_plan", details={
+            from ..utils.sign import sign_dict as _sign
+            det = {
                 "start": payload.start,
                 "goal": payload.goal,
                 "allowed": allowed,
                 "reasons": reasons,
                 "costs": costs,
-            }))
+            }
+            try:
+                sig = _sign({"scene_id": str(payload.scene_id), "type": "nav_plan"})
+                if sig:
+                    det["signature"] = sig
+            except Exception:
+                pass
+            db.add(AuditLog(scene_id=payload.scene_id, action="nav_plan", details=det))
             db.commit()
 
         return NavigationPlanResponse(
