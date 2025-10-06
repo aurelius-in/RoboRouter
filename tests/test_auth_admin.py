@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import os
+import sys
+
+
+def _ensure_path() -> None:
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+
+
+_ensure_path()
+
+from fastapi.testclient import TestClient  # noqa: E402
+from apps.api.app.main import app  # type: ignore  # noqa: E402
+
+
+client = TestClient(app)
+
+
+def test_auth_me_when_oidc_disabled() -> None:
+    r = client.get('/auth/me')
+    assert r.status_code == 200
+    body = r.json()
+    assert 'claims' in body
+
+
+def test_admin_cleanup_requires_api_key_and_role() -> None:
+    r = client.post('/admin/cleanup')
+    assert r.status_code in (401, 403)
+
+

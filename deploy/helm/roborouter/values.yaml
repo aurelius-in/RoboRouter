@@ -13,3 +13,10 @@ env:
   ROBOROUTER_ORCHESTRATOR: stub
   ROBOROUTER_RATE_LIMIT_RPM: "120"
 
+ingress:
+  enabled: false
+  host: roborouter.local
+  tls:
+    enabled: false
+    secretName: roborouter-tls
+
