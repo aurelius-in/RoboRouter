@@ -4,8 +4,10 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from typing import Any, Dict
 
 from ..config import settings
 from ..db import Base, engine, get_db
@@ -89,13 +91,20 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         db.commit()
         db.refresh(art)
         artifact_ids.append(art.id)
-        # Audit provenance
-        db.add(AuditLog(scene_id=scene.id, action="ingest", details={
+        # Audit provenance with basic metadata when available
+        in_bounds, in_srs = (get_bounds_and_srs(input_path) if has_pdal() else (None, None))
+        out_bounds, out_srs = (get_bounds_and_srs(output_path) if has_pdal() else (None, None))
+        provenance: Dict[str, Any] = {
             "source_uri": payload.source_uri,
             "output_uri": f"s3://{settings.minio_bucket_processed}/{object_name}",
             "crs": payload.crs,
             "used_pdal": used_pdal,
-        }))
+            "input_bounds": in_bounds,
+            "input_srs": in_srs,
+            "output_bounds": out_bounds,
+            "output_srs": out_srs,
+        }
+        db.add(AuditLog(scene_id=scene.id, action="ingest", details=provenance))
         db.commit()
 
     # Metrics: attempt real counts with PDAL, otherwise fall back to zeros
@@ -145,4 +154,102 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
 
     return IngestResponse(scene_id=scene.id, artifact_ids=artifact_ids, metrics=metrics)
 
+
+@router.post("/ingest/stream", response_model=IngestResponse)
+async def ingest_stream(file: UploadFile = File(...), crs: str = "EPSG:3857", db: Session = Depends(get_db)) -> IngestResponse:  # type: ignore[no-untyped-def]
+    if not validate_crs(crs):
+        raise HTTPException(status_code=400, detail="Invalid CRS")
+
+    scene = Scene(source_uri=f"stream://{file.filename}", crs=crs, sensor_meta={"content_type": file.content_type})
+    db.add(scene)
+    db.commit()
+    db.refresh(scene)
+
+    client = get_minio_client()
+    artifact_ids: list[uuid.UUID] = []
+
+    with tempfile.TemporaryDirectory() as td:
+        temp_input_path = Path(td) / file.filename
+        with open(temp_input_path, "wb") as f:
+            while True:
+                chunk = await file.read(8 * 1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        output_path = str(Path(td) / f"{scene.id}.laz")
+
+        used_pdal = False
+        if has_pdal():
+            pipeline = build_ingest_pipeline(
+                str(temp_input_path),
+                output_path,
+                voxel_size=settings.ingest_voxel_size_m,
+                stddev_mult=settings.ingest_outlier_multiplier,
+                mean_k=settings.ingest_outlier_mean_k,
+                intensity_min=settings.ingest_intensity_min,
+                intensity_max=settings.ingest_intensity_max,
+                out_srs=crs,
+            )
+            try:
+                run_pipeline(pipeline)
+                used_pdal = True
+            except Exception:
+                Path(output_path).touch()
+        else:
+            Path(output_path).touch()
+
+        object_name = f"ingest/{scene.id}.laz"
+        try:
+            if Path(output_path).stat().st_size > 64 * 1024 * 1024:
+                upload_file_stream(client, settings.minio_bucket_processed, object_name, output_path)
+            else:
+                upload_file(client, settings.minio_bucket_processed, object_name, output_path)
+        except Exception:
+            upload_file(client, settings.minio_bucket_processed, object_name, output_path)
+
+        art = Artifact(scene_id=scene.id, type="ingested", uri=f"s3://{settings.minio_bucket_processed}/{object_name}")
+        db.add(art)
+        db.commit()
+        db.refresh(art)
+        artifact_ids.append(art.id)
+
+        # Audit provenance
+        in_bounds, in_srs = (get_bounds_and_srs(str(temp_input_path)) if has_pdal() else (None, None))
+        out_bounds, out_srs = (get_bounds_and_srs(output_path) if has_pdal() else (None, None))
+        provenance: Dict[str, Any] = {
+            "source_uri": scene.source_uri,
+            "original_filename": file.filename,
+            "output_uri": f"s3://{settings.minio_bucket_processed}/{object_name}",
+            "crs": crs,
+            "used_pdal": used_pdal,
+            "input_bounds": in_bounds,
+            "input_srs": in_srs,
+            "output_bounds": out_bounds,
+            "output_srs": out_srs,
+        }
+        db.add(AuditLog(scene_id=scene.id, action="ingest", details=provenance))
+        db.commit()
+
+    # Metrics
+    count_in = get_point_count(str(temp_input_path)) if has_pdal() else None  # type: ignore[arg-type]
+    count_out = get_point_count(output_path) if has_pdal() else None  # type: ignore[arg-type]
+    completeness = (float(count_out) / float(count_in)) if (count_in and count_out and count_in > 0) else 0.0
+    density = float(count_out) if count_out else 0.0
+    metrics = {
+        "point_count_in": float(count_in) if count_in else 0.0,
+        "point_count_out": float(count_out) if count_out else 0.0,
+        "density": density,
+        "completeness": completeness,
+        "used_pdal": 1.0 if used_pdal else 0.0,  # type: ignore[name-defined]
+    }
+    try:
+        metrics["ingested_sha256"] = float(int(sha256_file(output_path), 16) % 1e6)
+    except Exception:
+        pass
+    for k, v in metrics.items():
+        db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
+    db.commit()
+
+    return IngestResponse(scene_id=scene.id, artifact_ids=artifact_ids, metrics=metrics)
 

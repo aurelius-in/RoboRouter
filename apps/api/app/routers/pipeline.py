@@ -18,7 +18,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..observability import REQUEST_COUNT, REQUEST_LATENCY, SERVICE_NAME
 import time
 from ..utils.hash import sha256_file
-from ..mlflow_stub import log_metrics as mlflow_log_metrics
+from ..mlflow_stub import log_metrics as mlflow_log_metrics, log_params as mlflow_log_params
 from ..utils.thresholds import load_thresholds
 from ..orchestrator.stub import OrchestratorStub
 from ..orchestrator.ray_orch import RayOrchestrator
@@ -46,6 +46,10 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             # Record stub plan (no behavior change)
             plan = orch.run(str(scene_id), steps)
             out: Dict[str, Any] = {"scene_id": str(scene_id), "steps": steps, "artifacts": [], "metrics": {}, "orchestrator": plan, "retries": int(getattr(settings, 'orchestrator_max_retries', 1)), "run_id": f"run_{scene_id}"}
+        try:
+            mlflow_log_params({"scene_id": str(scene_id), "steps": ",".join(steps), "orchestrator": getattr(settings, "orchestrator", "stub")})
+        except Exception:
+            pass
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
@@ -285,12 +289,24 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
 
 @router.post("/pipeline/cancel")
 def pipeline_cancel(run_id: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
-    # Stub cancel - a real orchestrator would track and cancel
-    return {"run_id": run_id, "status": "cancelled"}
+    # Route via configured orchestrator (stubbed behavior)
+    if settings.orchestrator == "ray":
+        orch = RayOrchestrator()
+    elif settings.orchestrator == "langgraph":
+        orch = LangGraphOrchestrator()
+    else:
+        orch = OrchestratorStub()
+    return orch.cancel(run_id)
 
 
 @router.post("/pipeline/resume")
 def pipeline_resume(run_id: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
-    return {"run_id": run_id, "status": "resumed"}
+    if settings.orchestrator == "ray":
+        orch = RayOrchestrator()
+    elif settings.orchestrator == "langgraph":
+        orch = LangGraphOrchestrator()
+    else:
+        orch = OrchestratorStub()
+    return orch.resume(run_id)
 
 
