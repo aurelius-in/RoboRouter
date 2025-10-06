@@ -4,13 +4,14 @@ import tempfile
 import uuid
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Scene
 from ..policy.opa import evaluate_export_policy, _load_policy
+from ..deps import require_api_key
 from ..utils.decision_log import write_decision
 from ..utils.crs import validate_crs
 from ..observability import EXPORT_COUNT, EXPORT_LATENCY, SERVICE_NAME
@@ -19,7 +20,7 @@ from ..storage.minio_client import get_minio_client, upload_file
 from ..utils.sign import sign_dict
 
 
-router = APIRouter(tags=["Export"])
+router = APIRouter(tags=["Export"], dependencies=[Depends(require_api_key)])
 
 
 @router.post("/export")

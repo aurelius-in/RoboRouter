@@ -15,6 +15,12 @@ spec:
                 name: {{ include "roborouter.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - secretName: {{ .Values.ingress.tls.secretName | quote }}
+      hosts:
+        - {{ .Values.ingress.host | quote }}
+  {{- end }}
 {{- end }}
 
 
