@@ -14,6 +14,11 @@ def log_params(params: Dict[str, Any]) -> None:
         import mlflow  # type: ignore
         if getattr(settings, "mlflow_tracking_uri", None):
             mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        # Best-effort experiment name
+        try:
+            mlflow.set_experiment(os.getenv("ROBOROUTER_MLFLOW_EXPERIMENT", "RoboRouter"))
+        except Exception:
+            pass
         for k, v in params.items():
             mlflow.log_param(k, v)
     except Exception:
@@ -29,6 +34,10 @@ def log_metrics(metrics: Dict[str, float]) -> None:
         import mlflow  # type: ignore
         if getattr(settings, "mlflow_tracking_uri", None):
             mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        try:
+            mlflow.set_experiment(os.getenv("ROBOROUTER_MLFLOW_EXPERIMENT", "RoboRouter"))
+        except Exception:
+            pass
         mlflow.log_metrics(metrics)
     except Exception:
         pass

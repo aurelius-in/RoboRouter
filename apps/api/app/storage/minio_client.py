@@ -6,6 +6,7 @@ from typing import Optional
 import mimetypes
 
 from minio import Minio
+import time
 
 from ..config import settings
 
@@ -24,20 +25,42 @@ def ensure_bucket(client: Minio, bucket: str) -> None:
         client.make_bucket(bucket)
 
 
-def upload_file(client: Minio, bucket: str, object_name: str, file_path: str, *, content_type: Optional[str] = None) -> None:
+def upload_file(client: Minio, bucket: str, object_name: str, file_path: str, *, content_type: Optional[str] = None, max_retries: int = 3) -> None:
     ensure_bucket(client, bucket)
     guessed, _ = mimetypes.guess_type(object_name)
     ct = content_type or guessed or "application/octet-stream"
-    client.fput_object(bucket, object_name, file_path, content_type=ct)
+    attempt = 0
+    delay = 0.5
+    while True:
+        try:
+            client.fput_object(bucket, object_name, file_path, content_type=ct)
+            return
+        except Exception:
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            time.sleep(delay)
+            delay = min(4.0, delay * 2)
 
 
-def upload_file_stream(client: Minio, bucket: str, object_name: str, file_path: str, *, content_type: Optional[str] = None, part_size: int = 5 * 1024 * 1024) -> None:
+def upload_file_stream(client: Minio, bucket: str, object_name: str, file_path: str, *, content_type: Optional[str] = None, part_size: int = 5 * 1024 * 1024, max_retries: int = 3) -> None:
     ensure_bucket(client, bucket)
     guessed, _ = mimetypes.guess_type(object_name)
     ct = content_type or guessed or "application/octet-stream"
     size = Path(file_path).stat().st_size
-    with open(file_path, "rb") as data:
-        client.put_object(bucket, object_name, data, length=size, part_size=part_size, content_type=ct)
+    attempt = 0
+    delay = 0.5
+    while True:
+        try:
+            with open(file_path, "rb") as data:
+                client.put_object(bucket, object_name, data, length=size, part_size=part_size, content_type=ct)
+            return
+        except Exception:
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            time.sleep(delay)
+            delay = min(4.0, delay * 2)
 
 
 def presigned_get_url(
@@ -55,8 +78,19 @@ def presigned_get_url(
     )
 
 
-def download_file(client: Minio, bucket: str, object_name: str, dest_path: str) -> None:
+def download_file(client: Minio, bucket: str, object_name: str, dest_path: str, *, max_retries: int = 3) -> None:
     Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-    client.fget_object(bucket, object_name, dest_path)
+    attempt = 0
+    delay = 0.5
+    while True:
+        try:
+            client.fget_object(bucket, object_name, dest_path)
+            return
+        except Exception:
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            time.sleep(delay)
+            delay = min(4.0, delay * 2)
 
 

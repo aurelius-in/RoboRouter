@@ -2,14 +2,17 @@ stages:
   preprocess:
     cmd: echo "preprocess placeholder"
     deps: []
-    outs: [data/processed]
+    outs:
+      - data/processed
   train:
     cmd: echo "train placeholder"
-    deps: [data/processed]
-    outs: [models]
-stages:
+    deps:
+      - data/processed
+    outs:
+      - models
   ingest:
     cmd: python -m scripts.pipeline ingest
+    deps: []
     outs: []
   registration:
     cmd: python -m scripts.pipeline registration

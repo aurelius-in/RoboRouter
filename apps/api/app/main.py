@@ -59,6 +59,7 @@ async def api_key_guard(request, call_next):  # type: ignore[no-untyped-def]
 
 # Simple in-memory rate limiter (best-effort, per-process)
 _RL_BUCKET: dict[str, tuple[float, int]] = {}
+_KEY_QUOTA: dict[str, tuple[float, int]] = {}
 
 
 @app.middleware("http")
@@ -80,6 +81,23 @@ async def rate_limiter(request, call_next):  # type: ignore[no-untyped-def]
         retry_after = int(max(1, 60 - int(now - ts)))
         resp.headers["Retry-After"] = str(retry_after)
         return resp
+    # Optional per-API-key quota
+    try:
+        if settings.quota_rpm_per_key and settings.api_key:
+            k = request.headers.get("x-api-key") or request.headers.get("X-API-Key") or "anon"
+            if k and k != "anon":
+                ts2, c2 = _KEY_QUOTA.get(k, (now, 0))
+                if now - ts2 > window:
+                    ts2, c2 = now, 0
+                c2 += 1
+                _KEY_QUOTA[k] = (ts2, c2)
+                if c2 > int(settings.quota_rpm_per_key):
+                    from fastapi.responses import JSONResponse as _JR
+                    r2 = _JR({"detail": "Quota exceeded for API key"}, status_code=429)
+                    r2.headers["Retry-After"] = str(int(max(1, 60 - int(now - ts2))))
+                    return r2
+    except Exception:
+        pass
     return await call_next(request)
 
 
