@@ -56,6 +56,16 @@ class Settings(BaseSettings):
     orchestrator: str = "stub"  # one of: stub, ray, langgraph
     orchestrator_max_retries: int = 1
 
+    # Auth (OIDC)
+    oidc_enabled: bool = False
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_audience: str | None = None
+
+    # MLflow
+    mlflow_enabled: bool = False
+    mlflow_tracking_uri: str | None = None
+
     class Config:
         env_prefix = "ROBOROUTER_"
 

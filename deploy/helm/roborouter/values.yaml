@@ -1,0 +1,15 @@
+image:
+  repository: roborouter/api
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources: {}
+
+env:
+  ROBOROUTER_ORCHESTRATOR: stub
+  ROBOROUTER_RATE_LIMIT_RPM: "120"
+

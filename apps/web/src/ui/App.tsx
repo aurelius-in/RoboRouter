@@ -688,6 +688,16 @@ export const App: React.FC = () => {
         {artifactUrl && artifactType === 'export_potree' && (
           <div style={{ marginTop: 12 }}>
             <iframe src={artifactUrl} style={{ width: '100%', height: 400, border: '1px solid #222' }} />
+            <div style={{ marginTop: 6 }}>
+              <button onClick={async()=>{
+                try {
+                  const progressUrl = artifactUrl.replace(/index\.html(?:\?.*)?$/, 'progress.json')
+                  const r = await fetch(progressUrl)
+                  const t = await r.text()
+                  setStatus(`Potree progress: ${t.slice(0, 200)}`)
+                } catch { setStatus('Progress fetch failed') }
+              }}>Check Potree progress</button>
+            </div>
           </div>
         )}
         {artifactUrl && artifactType === 'export_webm' && (
