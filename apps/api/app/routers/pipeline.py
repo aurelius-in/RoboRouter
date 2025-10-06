@@ -176,7 +176,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "segmentation", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "segmentation").observe(dur)
-            out["metrics"]["segmentation_ms"] = round(dur * 1000.0, 2)
+                    out["metrics"]["segmentation_ms"] = round(dur * 1000.0, 2)
+                    try:
+                        out["metrics"]["seg_batch_points"] = float(getattr(settings, "perf_segmentation_batch_points", 5000))
+                    except Exception:
+                        pass
             try:
                 mlflow_log_metrics({"segmentation_ms": out["metrics"]["segmentation_ms"], "miou": float(out["metrics"]["miou"])})
             except Exception:
@@ -253,7 +257,11 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
             dur = time.time() - _t0
             REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "change_detection", "200").inc()
             REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "change_detection").observe(dur)
-            out["metrics"]["change_detection_ms"] = round(dur * 1000.0, 2)
+                    out["metrics"]["change_detection_ms"] = round(dur * 1000.0, 2)
+                    try:
+                        out["metrics"]["change_tiles"] = float(getattr(settings, "perf_change_tiles", 8))
+                    except Exception:
+                        pass
             try:
                 mlflow_log_metrics({
                     "change_detection_ms": out["metrics"]["change_detection_ms"],

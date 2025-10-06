@@ -17,6 +17,7 @@ from ..schemas import IngestRequest, IngestResponse
 from ..storage.minio_client import get_minio_client, upload_file, upload_file_stream, download_file
 from ..utils.crs import validate_crs
 from ..utils.hash import sha256_file
+from ..utils.sign import sign_dict
 
 
 router = APIRouter(tags=["Ingest"])
@@ -104,6 +105,12 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
             "output_bounds": out_bounds,
             "output_srs": out_srs,
         }
+        try:
+            sig = sign_dict({"scene_id": str(scene.id), "source_uri": payload.source_uri, "crs": payload.crs})
+            if sig:
+                provenance["signature"] = sig
+        except Exception:
+            pass
         db.add(AuditLog(scene_id=scene.id, action="ingest", details=provenance))
         db.commit()
 
@@ -219,6 +226,12 @@ async def ingest_stream(file: UploadFile = File(...), crs: str = "EPSG:3857", db
             "output_bounds": out_bounds,
             "output_srs": out_srs,
         }
+        try:
+            sig = sign_dict({"scene_id": str(scene.id), "source_uri": scene.source_uri, "crs": crs})
+            if sig:
+                provenance["signature"] = sig
+        except Exception:
+            pass
         db.add(AuditLog(scene_id=scene.id, action="ingest", details=provenance))
         db.commit()
 

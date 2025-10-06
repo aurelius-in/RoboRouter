@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     change_use_learned: bool = False
     change_pose_drift_default: float = 0.05
 
+    # Performance / batching
+    perf_enable_batching: bool = True
+    perf_segmentation_batch_points: int = 5000
+    perf_change_tiles: int = 8
+
     # Policy / OPA
     opa_policy_path: str | None = "configs/opa/policy.yaml"
 

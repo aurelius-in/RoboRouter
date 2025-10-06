@@ -34,7 +34,8 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | i
             except Exception:
                 used_cuda = 0
             used_minkowski = 1
-            num_points = 2000
+            # Batch-aware stub: simulate processing in chunks
+            num_points = max(1000, int(getattr(settings, "perf_segmentation_batch_points", 5000)))
             num_classes = int(getattr(settings, "seg_num_classes", 5))
             model = load_kpconv_model(settings.seg_model_path)
             out = run_kpconv_inference(model, num_points, num_classes)
@@ -43,8 +44,8 @@ def run_segmentation(input_path: str, out_dir: str) -> Dict[str, str | float | i
             entropy = np.mean(binary_entropy(confidence))
     else:
         with span("segmentation.stub"):
-        # Pretend we made predictions for N points
-            num_points = 1000
+            # Pretend we made predictions for N points (batch-aware)
+            num_points = max(1000, int(getattr(settings, "perf_segmentation_batch_points", 5000)))
             num_classes = int(getattr(settings, "seg_num_classes", 5))
             logits = np.random.randn(num_points, num_classes)
             probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
