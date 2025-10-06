@@ -14,7 +14,7 @@ from ..storage.minio_client import get_minio_client, presigned_get_url
 from ..config import settings
 from ..storage.utils import parse_s3_uri
 from sqlalchemy import select
-from ..deps import require_api_key, require_role
+from ..deps import require_api_key, require_role, require_oidc_user
 
 
 router = APIRouter(tags=["Artifacts"])
@@ -149,7 +149,7 @@ def artifact_head(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-
         db.close()
 
 
-@router.delete("/artifacts/{artifact_id}", dependencies=[Depends(require_api_key), Depends(require_role("admin"))])
+@router.delete("/artifacts/{artifact_id}", dependencies=[Depends(require_api_key), Depends(require_role("admin")), Depends(require_oidc_user)])
 def delete_artifact(artifact_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:

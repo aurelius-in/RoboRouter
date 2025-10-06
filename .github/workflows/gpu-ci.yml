@@ -1,0 +1,33 @@
+name: GPU CI (self-hosted)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop ]
+
+jobs:
+  gpu-tests:
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r apps/api/requirements.txt -r requirements-dev.txt
+      - name: Verify CUDA presence
+        run: |
+          nvidia-smi || true
+          python - << 'PY'
+          try:
+              import torch
+              print('cuda_available=', torch.cuda.is_available())
+          except Exception as e:
+              print('torch not available:', e)
+          PY
+      - name: Run API tests (subset)
+        run: pytest -q tests/test_meta_and_auth.py
+
