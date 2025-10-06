@@ -40,12 +40,27 @@ def cmd_gc() -> None:
         db.close()
 
 
+def cmd_backfill_metrics() -> None:
+    """Backfill simple aggregate metrics per scene (stub)."""
+    db = SessionLocal()
+    try:
+        scenes = db.query(Scene).all()  # type: ignore[attr-defined]
+        for s in scenes:
+            cnt = db.query(Metric).filter(Metric.scene_id == s.id).count()  # type: ignore[attr-defined]
+            db.add(AuditLog(scene_id=s.id, action="backfill_metrics", details={"metric_count": int(cnt)}))
+        db.commit()
+        print(f"Backfilled metrics for {len(scenes)} scenes")
+    finally:
+        db.close()
+
+
 def main() -> NoReturn:
     parser = argparse.ArgumentParser(prog="roborouter-cli", description="RoboRouter maintenance CLI (stub)")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("cleanup")
     sub.add_parser("reindex")
     sub.add_parser("gc")
+    sub.add_parser("backfill-metrics")
     args = parser.parse_args()
 
     if args.cmd == "cleanup":
@@ -54,6 +69,8 @@ def main() -> NoReturn:
         cmd_reindex()
     elif args.cmd == "gc":
         cmd_gc()
+    elif args.cmd == "backfill-metrics":
+        cmd_backfill_metrics()
     raise SystemExit(0)
 
 

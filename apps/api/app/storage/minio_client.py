@@ -78,8 +78,19 @@ def presigned_get_url(
     )
 
 
-def download_file(client: Minio, bucket: str, object_name: str, dest_path: str) -> None:
+def download_file(client: Minio, bucket: str, object_name: str, dest_path: str, *, max_retries: int = 3) -> None:
     Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-    client.fget_object(bucket, object_name, dest_path)
+    attempt = 0
+    delay = 0.5
+    while True:
+        try:
+            client.fget_object(bucket, object_name, dest_path)
+            return
+        except Exception:
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            time.sleep(delay)
+            delay = min(4.0, delay * 2)
 
 
