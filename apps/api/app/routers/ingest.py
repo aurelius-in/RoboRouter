@@ -109,18 +109,14 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
 
     # Metrics: attempt real counts with PDAL, otherwise fall back to zeros
     count_in = get_point_count(payload.source_uri) if has_pdal() else None
-    processed_key = object_name
-    processed_local = None
-    # When PDAL is present we just wrote output_path; counts from it if available
-    if has_pdal():
-        processed_local = output_path
+    processed_local = output_path if has_pdal() else None
     count_out = get_point_count(processed_local) if processed_local else None
-    bounds_in, srs_in = (get_bounds_and_srs(payload.source_uri) if has_pdal() else (None, None))
-    bounds_out, srs_out = (get_bounds_and_srs(processed_local) if (has_pdal() and processed_local) else (None, None))
-    # Validate reprojection when available (best-effort string contains)
+    _, srs_in = (get_bounds_and_srs(payload.source_uri) if has_pdal() else (None, None))
+    _, srs_out = (get_bounds_and_srs(processed_local) if (has_pdal() and processed_local) else (None, None))
+    # Validate reprojection when available (best-effort)
     reprojection_ok = 0.0
     try:
-        if isinstance(srs_out, str) and payload.crs.split(":")[0] in srs_out or payload.crs in (srs_out or ""):
+        if isinstance(srs_out, str) and (payload.crs in srs_out or payload.crs.split(":")[0] in srs_out):
             reprojection_ok = 1.0
     except Exception:
         reprojection_ok = 0.0
@@ -131,23 +127,18 @@ def ingest(payload: IngestRequest, db: Session = Depends(get_db)) -> IngestRespo
         "point_count_out": float(count_out) if count_out else 0.0,
         "density": density,
         "completeness": completeness,
+        "used_pdal": 1.0 if used_pdal else 0.0,
         "reprojection_ok": reprojection_ok,
     }
+    # Hash and dedupe detection (best-effort)
     try:
-        metrics["ingested_sha256"] = float(int(sha256_file(output_path), 16) % 1e6)
-    except Exception:
-        pass
-    metrics["used_pdal"] = 1.0 if used_pdal else 0.0
-    # Simple dedupe metric: if an ingested artifact with same SHA exists
-    try:
-        existing = db.execute(
-            select(Metric).where(Metric.name == "ingested_sha256", Metric.scene_id != scene.id)
-        ).scalars().all()
-        cur = int(sha256_file(output_path), 16) % 1_000_000
-        hit = any(int(m.value) == cur for m in existing)
+        ing_sha = int(sha256_file(output_path), 16) % 1_000_000
+        metrics["ingested_sha256"] = float(ing_sha)
+        existing = db.execute(select(Metric).where(Metric.name == "ingested_sha256", Metric.scene_id != scene.id)).scalars().all()
+        hit = any(int(m.value) == ing_sha for m in existing)
         metrics["dedupe_hit"] = 1.0 if hit else 0.0
     except Exception:
-        metrics["dedupe_hit"] = 0.0
+        metrics.setdefault("dedupe_hit", 0.0)
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
     db.commit()
@@ -234,6 +225,15 @@ async def ingest_stream(file: UploadFile = File(...), crs: str = "EPSG:3857", db
     # Metrics
     count_in = get_point_count(str(temp_input_path)) if has_pdal() else None  # type: ignore[arg-type]
     count_out = get_point_count(output_path) if has_pdal() else None  # type: ignore[arg-type]
+    # Reprojection check best-effort
+    _, srs_in2 = (get_bounds_and_srs(str(temp_input_path)) if has_pdal() else (None, None))
+    _, srs_out2 = (get_bounds_and_srs(output_path) if has_pdal() else (None, None))
+    reprojection_ok2 = 0.0
+    try:
+        if isinstance(srs_out2, str) and (crs in srs_out2 or crs.split(":")[0] in srs_out2):
+            reprojection_ok2 = 1.0
+    except Exception:
+        reprojection_ok2 = 0.0
     completeness = (float(count_out) / float(count_in)) if (count_in and count_out and count_in > 0) else 0.0
     density = float(count_out) if count_out else 0.0
     metrics = {
@@ -242,11 +242,16 @@ async def ingest_stream(file: UploadFile = File(...), crs: str = "EPSG:3857", db
         "density": density,
         "completeness": completeness,
         "used_pdal": 1.0 if used_pdal else 0.0,  # type: ignore[name-defined]
+        "reprojection_ok": reprojection_ok2,
     }
     try:
-        metrics["ingested_sha256"] = float(int(sha256_file(output_path), 16) % 1e6)
+        ing_sha = int(sha256_file(output_path), 16) % 1_000_000
+        metrics["ingested_sha256"] = float(ing_sha)
+        existing = db.execute(select(Metric).where(Metric.name == "ingested_sha256", Metric.scene_id != scene.id)).scalars().all()
+        hit = any(int(m.value) == ing_sha for m in existing)
+        metrics["dedupe_hit"] = 1.0 if hit else 0.0
     except Exception:
-        pass
+        metrics.setdefault("dedupe_hit", 0.0)
     for k, v in metrics.items():
         db.add(Metric(scene_id=scene.id, name=k, value=float(v)))
     db.commit()

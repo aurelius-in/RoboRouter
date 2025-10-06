@@ -62,11 +62,16 @@ def export_laz(input_laz: str, out_laz: str) -> str:
 	return out_laz
 
 
-def export_gltf(input_laz: str, out_gltf: str, *, draco: bool = False) -> str:
+def export_gltf(input_laz: str, out_gltf: str, *, draco: bool = False, simplify: float = 0.0) -> str:
 	ensure_parent(out_gltf)
 	# Placeholder: write a minimal valid glTF 2.0 JSON so viewers load
 	try:
-		generator = "RoboRouter Exporter" + (" (Draco compressed)" if draco else "")
+		gen_flags = []
+		if draco:
+			gen_flags.append("Draco")
+		if simplify and simplify > 0:
+			gen_flags.append(f"simplify={min(max(simplify, 0.0), 1.0):.2f}")
+		generator = "RoboRouter Exporter" + (" (" + ", ".join(gen_flags) + ")" if gen_flags else "")
 		minimal_gltf = f"""
 {{
   "asset": {{ "version": "2.0", "generator": "{generator}" }},
