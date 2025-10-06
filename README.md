@@ -42,7 +42,7 @@ For smoke validation on a "golden" scene, the pipeline enforces minimal gates (s
 - Segmentation: miou >= 0.70
 - Change detection: change_f1 >= 0.70
 
-These thresholds are covered by `tests/integration/test_golden_gates.py` and can be tuned via `configs/thresholds.yaml` in future updates.
+##### These thresholds are covered by `tests/integration/test_golden_gates.py` and can be tuned via `configs/thresholds.yaml` in future updates.
 ----------------
 Prereqs: Docker with NVIDIA runtime. Then:
 
