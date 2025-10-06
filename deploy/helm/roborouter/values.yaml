@@ -12,6 +12,8 @@ resources: {}
 env:
   ROBOROUTER_ORCHESTRATOR: stub
   ROBOROUTER_RATE_LIMIT_RPM: "120"
+  ROBOROUTER_OTEL_ENABLED: "false"
+  ROBOROUTER_OTEL_OTLP_URL: ""
 
 ingress:
   enabled: false
