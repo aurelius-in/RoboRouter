@@ -145,6 +145,8 @@ def meta() -> Dict[str, Any]:
         "api_key_required": settings.api_key is not None,
         "rate_limit_per_minute": settings.rate_limit_rpm,
         "presign_expires_seconds": settings.presign_expires_seconds,
+        "orchestrator": getattr(settings, "orchestrator", "stub"),
+        "orchestrator_max_retries": getattr(settings, "orchestrator_max_retries", 1),
     }
 
 
