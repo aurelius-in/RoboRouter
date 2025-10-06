@@ -165,6 +165,11 @@ def meta() -> Dict[str, Any]:
         "presign_expires_seconds": settings.presign_expires_seconds,
         "orchestrator": getattr(settings, "orchestrator", "stub"),
         "orchestrator_max_retries": getattr(settings, "orchestrator_max_retries", 1),
+        "perf": {
+            "batching": getattr(settings, "perf_enable_batching", True),
+            "seg_batch_points": getattr(settings, "perf_segmentation_batch_points", 5000),
+            "change_tiles": getattr(settings, "perf_change_tiles", 8),
+        },
     }
 
 

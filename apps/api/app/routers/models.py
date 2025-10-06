@@ -42,3 +42,14 @@ def register_model(name: str, uri: str) -> Dict[str, Any]:  # type: ignore[no-un
     return {"name": name, "uri": uri, "status": "recorded"}
 
 
+@router.post("/models/stage")
+def stage_model(name: str, stage: str = "Staging") -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """Stub to move a model to a stage (logs via MLflow params if enabled)."""
+    try:
+        from ..mlflow_stub import log_params as _lp
+        _lp({"model_name": name, "model_stage": stage})
+    except Exception:
+        pass
+    return {"name": name, "stage": stage, "status": "staged"}
+
+
