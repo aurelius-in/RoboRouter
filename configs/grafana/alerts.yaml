@@ -1,0 +1,14 @@
+groups:
+  - name: roborouter-api
+    interval: 1m
+    rules:
+      - alert: HighErrorRate
+        expr: sum by(status) (increase(roborouter_requests_total{status=~"5.."}[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: High 5xx rate on RoboRouter API
+          description: More than 5 errors in 5 minutes
+
+
