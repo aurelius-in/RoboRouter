@@ -291,9 +291,18 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         except Exception:
             pass
 
-        # Audit the pipeline run summary
+        # Audit the pipeline run summary (signed)
         try:
-            db.add(AuditLog(scene_id=scene_id, action="pipeline_run", details={"steps": steps, "metrics": out.get("metrics", {})}))
+            from ..utils.sign import sign_dict as _sign
+            sig = None
+            try:
+                sig = _sign({"scene_id": str(scene_id), "steps": ",".join(steps)})
+            except Exception:
+                sig = None
+            det = {"steps": steps, "metrics": out.get("metrics", {})}
+            if sig:
+                det["signature"] = sig
+            db.add(AuditLog(scene_id=scene_id, action="pipeline_run", details=det))
             db.commit()
         except Exception:
             pass
