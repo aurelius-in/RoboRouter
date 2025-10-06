@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import HTTPException, Request, status
 
 from .config import settings
@@ -37,4 +39,20 @@ def require_oidc_user(request: Request) -> None:  # type: ignore[no-untyped-def]
     claims = verify_token(token)
     if not claims:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+
+def require_scene_access(scene_id: Any, request: Request) -> None:  # type: ignore[no-untyped-def]
+    """Best-effort scene-level authorization.
+
+    If authz_enforce_scenes is enabled, require either X-Role: admin or an X-Scene-Access header
+    containing the scene_id.
+    """
+    if not getattr(settings, "authz_enforce_scenes", False):
+        return
+    role = (request.headers.get("X-Role") or "").lower()
+    if role == "admin":
+        return
+    allow = request.headers.get("X-Scene-Access") or ""
+    if str(scene_id) not in allow:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for scene")
 
