@@ -177,6 +177,7 @@ export const App: React.FC = () => {
   const [artifactMeta, setArtifactMeta] = useState<{ size_bytes?: number | null; content_type?: string | null; last_modified?: number | null; etag?: string | null } | null>(null)
   const [artifactPreview, setArtifactPreview] = useState<string>('')
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<string>(()=>{ try { return localStorage.getItem('artifact_type_filter') || '' } catch { return '' } })
+  const [useDraco, setUseDraco] = useState<boolean>(()=>{ try { return localStorage.getItem('export_draco')==='true' } catch { return false } })
   const [artifactsOffset, setArtifactsOffset] = useState<number>(0)
   const [artifactsLimit, setArtifactsLimit] = useState<number>(()=>{ try { return Number(localStorage.getItem('artifacts_limit')||'20')||20 } catch { return 20 } })
   const [artifactsTotal, setArtifactsTotal] = useState<number>(0)
@@ -431,9 +432,9 @@ export const App: React.FC = () => {
             </label>
             <button style={{ marginLeft: 8 }} onClick={async()=>{ try { const r = await policyCheck(exportType, exportCrs); setStatus(r.allowed ? 'Policy: allowed' : `Policy: blocked (${r.reason})`) } catch { setStatus('Policy check failed') } }}>Check policy</button>
           </div>
-          <button onClick={async()=>{ if(!sceneId) return; setStatus(`Exporting ${exportType} ...`);
+          <button onClick={async()=>{ if(!sceneId) return; setStatus(`Exporting ${exportType}${exportType==='gltf' && useDraco ? ' (draco)' : ''} ...`);
             try{
-              const resp = await requestExport(sceneId, exportType, exportCrs);
+              const resp = await requestExport(sceneId, exportType, exportCrs, exportType==='gltf' ? useDraco : false);
               // If we got an artifact_id, fetch and open it inline
               if (resp && resp.artifact_id) {
                 const info = await getArtifactUrl(resp.artifact_id)
@@ -442,6 +443,11 @@ export const App: React.FC = () => {
               const sc = await getScene(sceneId); setArtifacts(sc.artifacts); setStatus(`${exportType} export done.`)
             }catch{ setStatus('Export failed.') }
           }}>Export</button>
+          {exportType==='gltf' && (
+            <label style={{ marginLeft: 8 }}>
+              <input type="checkbox" checked={useDraco} onChange={(e)=>{ setUseDraco(e.target.checked); try { localStorage.setItem('export_draco', String(e.target.checked)) } catch {} }} /> draco
+            </label>
+          )}
           <div style={{ fontSize: 12, color: '#777', marginTop: 4 }}>Potree tiles open in a new tab.</div>
           <div style={{ marginTop: 6 }}>
             <button onClick={()=>openLatestByType('export_gltf')}>Open latest glTF here</button>

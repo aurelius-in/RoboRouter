@@ -65,58 +65,65 @@ def pipeline_run(scene_id: uuid.UUID, steps: Optional[List[str]] = None, config_
         
 
         if "registration" in steps:
-            _t0 = time.time()
-            ingest_art = db.execute(
-                select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.desc())
-            ).scalars().first()
-            if not ingest_art:
-                raise HTTPException(status_code=400, detail="No ingested artifact found for scene")
-
-            client = get_minio_client()
-            bucket = ingest_art.uri.split("/")[2] if ingest_art.uri.startswith("s3://") else None
-            key = "/".join(ingest_art.uri.split("/")[3:]) if bucket else None
-
-            # In a full impl, download artifact. Here we simulate using a temp path.
-            with tempfile.TemporaryDirectory() as td:
-                input_path = str((__import__("pathlib").Path(td) / "input.laz"))
-                open(input_path, "wb").close()
-                aligned_path = str((__import__("pathlib").Path(td) / "aligned.laz"))
-                result = register_clouds(input_path, aligned_path)
-
-                aligned_obj = f"registration/aligned_{scene_id}.laz"
-                upload_file(client, "roborouter-processed", aligned_obj, result.aligned_path)
-                art_aligned = Artifact(scene_id=scene_id, type="aligned", uri=f"s3://roborouter-processed/{aligned_obj}")
-                db.add(art_aligned)
-                db.add(Metric(scene_id=scene_id, name="rmse", value=float(result.rmse)))
-                db.add(Metric(scene_id=scene_id, name="inlier_ratio", value=float(result.inlier_ratio)))
+            step_attempts = 0
+            max_retries = max(1, int(getattr(settings, "orchestrator_max_retries", 1)))
+            while step_attempts < max_retries:
+                step_attempts += 1
+                _t0 = time.time()
                 try:
-                    db.add(Metric(scene_id=scene_id, name="aligned_sha256", value=float(int(sha256_file(result.aligned_path), 16) % 1e6)))
-                except Exception:
-                    pass
+                    ingest_art = db.execute(
+                        select(Artifact).where(Artifact.scene_id == scene_id, Artifact.type == "ingested").order_by(Artifact.created_at.desc())
+                    ).scalars().first()
+                    if not ingest_art:
+                        raise HTTPException(status_code=400, detail="No ingested artifact found for scene")
 
-                resid_obj = f"overlays/residuals_{scene_id}.json"
-                upload_file(client, "roborouter-processed", resid_obj, result.residuals_path)
-                art_resid = Artifact(scene_id=scene_id, type="residuals", uri=f"s3://roborouter-processed/{resid_obj}")
-                db.add(art_resid)
+                    client = get_minio_client()
+                    # In a full impl, download artifact. Here we simulate using a temp path.
+                    with tempfile.TemporaryDirectory() as td:
+                        input_path = str((__import__("pathlib").Path(td) / "input.laz"))
+                        open(input_path, "wb").close()
+                        aligned_path = str((__import__("pathlib").Path(td) / "aligned.laz"))
+                        result = register_clouds(input_path, aligned_path)
 
-                db.commit()
-                db.refresh(art_aligned)
-                db.refresh(art_resid)
-                out["artifacts"].extend([str(art_aligned.id), str(art_resid.id)])
-                out["metrics"].update({"rmse": result.rmse, "inlier_ratio": result.inlier_ratio})
-            dur = time.time() - _t0
-            REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "registration", "200").inc()
-            REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(dur)
-            out["metrics"]["registration_ms"] = round(dur * 1000.0, 2)
-            try:
-                mlflow_log_metrics({"registration_ms": out["metrics"]["registration_ms"], "rmse": float(out["metrics"]["rmse"]), "inlier_ratio": float(out["metrics"]["inlier_ratio"])})
-            except Exception:
-                pass
-            # Pass/fail gate
-            try:
-                out["metrics"]["registration_pass"] = float((out["metrics"]["rmse"] <= thr.get("rmse_max", 0.10)) and (out["metrics"]["inlier_ratio"] >= 0.70))
-            except Exception:
-                out["metrics"]["registration_pass"] = 0.0
+                        aligned_obj = f"registration/aligned_{scene_id}.laz"
+                        upload_file(client, "roborouter-processed", aligned_obj, result.aligned_path)
+                        art_aligned = Artifact(scene_id=scene_id, type="aligned", uri=f"s3://roborouter-processed/{aligned_obj}")
+                        db.add(art_aligned)
+                        db.add(Metric(scene_id=scene_id, name="rmse", value=float(result.rmse)))
+                        db.add(Metric(scene_id=scene_id, name="inlier_ratio", value=float(result.inlier_ratio)))
+                        try:
+                            db.add(Metric(scene_id=scene_id, name="aligned_sha256", value=float(int(sha256_file(result.aligned_path), 16) % 1e6)))
+                        except Exception:
+                            pass
+
+                        resid_obj = f"overlays/residuals_{scene_id}.json"
+                        upload_file(client, "roborouter-processed", resid_obj, result.residuals_path)
+                        art_resid = Artifact(scene_id=scene_id, type="residuals", uri=f"s3://roborouter-processed/{resid_obj}")
+                        db.add(art_resid)
+
+                        db.commit()
+                        db.refresh(art_aligned)
+                        db.refresh(art_resid)
+                        out["artifacts"].extend([str(art_aligned.id), str(art_resid.id)])
+                        out["metrics"].update({"rmse": result.rmse, "inlier_ratio": result.inlier_ratio})
+                    dur = time.time() - _t0
+                    REQUEST_COUNT.labels(SERVICE_NAME, "PIPELINE", "registration", "200").inc()
+                    REQUEST_LATENCY.labels(SERVICE_NAME, "PIPELINE", "registration").observe(dur)
+                    out["metrics"]["registration_ms"] = round(dur * 1000.0, 2)
+                    out["metrics"]["registration_retries"] = float(step_attempts)
+                    try:
+                        mlflow_log_metrics({"registration_ms": out["metrics"]["registration_ms"], "rmse": float(out["metrics"]["rmse"]), "inlier_ratio": float(out["metrics"]["inlier_ratio"]), "registration_retries": float(step_attempts)})
+                    except Exception:
+                        pass
+                    # Pass/fail gate
+                    try:
+                        out["metrics"]["registration_pass"] = float((out["metrics"]["rmse"] <= thr.get("rmse_max", 0.10)) and (out["metrics"]["inlier_ratio"] >= thr.get("inlier_ratio_min", 0.70)))
+                    except Exception:
+                        out["metrics"]["registration_pass"] = 0.0
+                    break
+                except Exception as _e:
+                    if step_attempts >= max_retries:
+                        raise
 
         if "segmentation" in steps:
             _t0 = time.time()
