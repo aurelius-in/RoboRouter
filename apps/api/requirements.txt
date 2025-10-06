@@ -1,0 +1,8 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.5
+pydantic-settings==2.4.0
+sqlalchemy==2.0.34
+minio==7.2.7
+prometheus-client==0.20.0
+pytest==8.3.2
+

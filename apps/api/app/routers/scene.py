@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Metric, Scene
 from ..schemas import SceneDetail, ArtifactDTO, MetricDTO, AuditDTO
-from ..deps import require_api_key
+from ..deps import require_api_key, require_role
 from ..storage.utils import parse_s3_uri
 from ..storage.minio_client import get_minio_client
 
@@ -90,7 +90,7 @@ def scenes_csv(offset: int = 0, limit: int = 1000, q: Optional[str] = None) -> s
         db.close()
 
 
-@router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key)])
+@router.delete("/scene/{scene_id}", dependencies=[Depends(require_api_key), Depends(require_role("admin"))])
 def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:

@@ -14,10 +14,10 @@ from ..storage.minio_client import get_minio_client
 from ..storage.utils import parse_s3_uri
 
 
-from ..deps import require_api_key
+from ..deps import require_api_key, require_role
 
 
-router = APIRouter(dependencies=[Depends(require_api_key)])
+router = APIRouter(dependencies=[Depends(require_api_key), Depends(require_role("admin"))])
 
 
 @router.post("/admin/cleanup")
