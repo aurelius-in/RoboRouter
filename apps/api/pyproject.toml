@@ -16,4 +16,11 @@ dependencies = [
   "opentelemetry-sdk==1.26.0",
 ]
 
+[project.scripts]
+roborouter-cli = "app.cli:main"
+
+[project.optional-dependencies]
+mlflow = ["mlflow>=2.13.0"]
+observability = ["opentelemetry-exporter-otlp==1.26.0"]
+
 
