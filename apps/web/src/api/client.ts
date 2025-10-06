@@ -91,7 +91,8 @@ export const requestExport = (sceneId: string, type: string, crs: string = 'EPSG
 export const getMeta = () => apiGet<any>('/meta')
 export const getStats = () => apiGet<any>('/stats')
 export const getConfig = () => apiGet<any>('/config')
-export const policyCheck = (type: string, crs: string) => apiPost<{ allowed: boolean; reason: string }>(`/policy/check`, { export_type: type, crs })
+export type PolicyCheck = { allowed: boolean; reason: string; policy_version?: string | null }
+export const policyCheck = (type: string, crs: string) => apiPost<PolicyCheck>(`/policy/check`, { export_type: type, crs })
 export const adminCleanup = () => apiPost<any>('/admin/cleanup')
 export const authPing = () => apiGet<any>('/auth/ping')
 export const getRuns = (opts?: { only_failed?: boolean; only_passed?: boolean; limit?: number }) => {
