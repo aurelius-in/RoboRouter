@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List
+import os
 
 from fastapi import APIRouter
 
@@ -28,5 +29,16 @@ def list_models() -> Dict[str, List[Dict[str, Any]]]:  # type: ignore[no-untyped
             {"name": "webm", "device": "cpu", "status": "available"},
         ],
     }
+
+
+@router.post("/models/register")
+def register_model(name: str, uri: str) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+    """Stub endpoint to record a model URI in MLflow if enabled."""
+    try:
+        from ..mlflow_stub import log_params as _lp
+        _lp({"model_name": name, "model_uri": uri})
+    except Exception:
+        pass
+    return {"name": name, "uri": uri, "status": "recorded"}
 
 

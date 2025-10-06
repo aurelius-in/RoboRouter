@@ -30,8 +30,10 @@ def run_change_detection(baseline_path: str, current_path: str, out_dir: str, po
             used_learned = 1
     else:
         with span("change_detection.stub"):
-            # Stub: pretend we detected changes in 3 classes
-            mask_stats = {"added": 42, "removed": 17, "moved": 5}
+            # Stub: pretend we detected changes in 3 classes with tiling factor
+            tiles = max(1, int(getattr(settings, "perf_change_tiles", 8)))
+            base = {"added": 42, "removed": 17, "moved": 5}
+            mask_stats = {k: int(v * (tiles / 8.0)) for k, v in base.items()}
     change_mask_path = str(Path(out_dir) / "change_mask_summary.json")
     with open(change_mask_path, "w", encoding="utf-8") as f:
         json.dump({"mask_stats": mask_stats, "voxel_size_m": settings.change_voxel_size_m}, f)
