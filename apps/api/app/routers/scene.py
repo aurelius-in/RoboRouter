@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import Artifact, AuditLog, Metric, Scene
 from ..schemas import SceneDetail, ArtifactDTO, MetricDTO, AuditDTO
-from ..deps import require_api_key, require_role
+from ..deps import require_api_key, require_role, require_scene_access
 from ..storage.utils import parse_s3_uri
 from ..storage.minio_client import get_minio_client
 
@@ -20,9 +20,14 @@ router = APIRouter(tags=["Scene"])
 
 
 @router.get("/scene/{scene_id}", response_model=SceneDetail)
-def get_scene(scene_id: uuid.UUID) -> SceneDetail:  # type: ignore[no-untyped-def]
+def get_scene(scene_id: uuid.UUID, request: Request) -> SceneDetail:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
+        # Optional scene-level authorization (best-effort)
+        try:
+            require_scene_access(scene_id, request)
+        except Exception as _e:
+            raise
         scene = db.get(Scene, scene_id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
@@ -118,9 +123,13 @@ def delete_scene(scene_id: uuid.UUID) -> Dict[str, Any]:  # type: ignore[no-unty
 
 
 @router.get("/scene/{scene_id}/metrics/csv", response_class=PlainTextResponse)
-def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
+def metrics_csv(scene_id: uuid.UUID, request: Request) -> str:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
+        try:
+            require_scene_access(scene_id, request)
+        except Exception as _e:
+            raise
         rows = db.execute(select(Metric).where(Metric.scene_id == scene_id).order_by(Metric.created_at.asc())).scalars().all()
         out = ["name,value,created_at"]
         for m in rows:
@@ -131,9 +140,13 @@ def metrics_csv(scene_id: uuid.UUID) -> str:  # type: ignore[no-untyped-def]
 
 
 @router.get("/scene/{scene_id}/artifacts")
-def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, type: Optional[str] = None, exports_only: bool = False, sort_by: Optional[str] = None, order: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
+def list_scene_artifacts(scene_id: uuid.UUID, request: Request, offset: int = 0, limit: int = 50, type: Optional[str] = None, exports_only: bool = False, sort_by: Optional[str] = None, order: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
+        try:
+            require_scene_access(scene_id, request)
+        except Exception as _e:
+            raise
         q = select(Artifact).where(Artifact.scene_id == scene_id)
         if type:
             q = q.where(Artifact.type == type)
@@ -156,9 +169,13 @@ def list_scene_artifacts(scene_id: uuid.UUID, offset: int = 0, limit: int = 50, 
 
 
 @router.get("/scene/{scene_id}/artifacts/csv", response_class=PlainTextResponse)
-def artifacts_csv(scene_id: uuid.UUID, type: Optional[str] = None, exports_only: bool = False) -> str:  # type: ignore[no-untyped-def]
+def artifacts_csv(scene_id: uuid.UUID, request: Request, type: Optional[str] = None, exports_only: bool = False) -> str:  # type: ignore[no-untyped-def]
     db: Session = SessionLocal()
     try:
+        try:
+            require_scene_access(scene_id, request)
+        except Exception as _e:
+            raise
         q = select(Artifact).where(Artifact.scene_id == scene_id).order_by(Artifact.created_at.desc())
         if type:
             q = q.where(Artifact.type == type)
